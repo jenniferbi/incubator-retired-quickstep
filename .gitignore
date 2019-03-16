@@ -10,3 +10,4 @@ autom4te.cache
 .idea
 *~
 third_party/src
+tags
