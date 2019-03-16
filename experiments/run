@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# usage: ./run <test file> <optional selectivity threshold>
+
+FLAGS="--initialize_db=true --visualize_plan"
+if [ ! -z $2 ]; then
+    FLAGS+=" -push_down_disjunctive_predicate_selectivity_threshold $2"
+fi
+
+cat $1 | ../build/quickstep_cli_shell $FLAGS
+rm -rf qsstor

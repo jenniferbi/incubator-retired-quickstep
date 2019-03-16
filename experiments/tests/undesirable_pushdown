@@ -1,0 +1,9 @@
+CREATE TABLE T1 (id1 INTEGER);
+CREATE TABLE T2 (id2 INTEGER);
+COPY T1 FROM 'test_tables/t1.tbl' WITH (DELIMITER '|');
+COPY T2 FROM 'test_tables/t2.tbl' WITH (DELIMITER '|');
+
+SELECT *
+FROM T1,T2
+WHERE (T1.id1 < 1 AND T2.id2 < 1) OR
+    ((T1.id1 > 2 OR T1.id1 > 2) AND T2.id2 < 1000000);
