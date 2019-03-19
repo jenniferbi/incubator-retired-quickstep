@@ -8,4 +8,3 @@ if [ ! -z $2 ]; then
 fi
 
 cat $1 | ../build/quickstep_cli_shell $FLAGS
-rm -rf qsstor
