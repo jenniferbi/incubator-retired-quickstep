@@ -167,6 +167,93 @@ inline TypedValue ExecuteQueryForSingleResult(
   return results[0];
 }
 
+void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
+                    		const tmb::client_id main_thread_client_id,
+							const tmb::client_id foreman_client_id,
+							MessageBus *bus,
+							StorageManager *storage_manager,
+							QueryProcessor *query_processor,
+							FILE *out) {
+  const CatalogDatabase &database = *query_processor->getDefaultDatabase();
+
+  std::unique_ptr<SqlParserWrapper> parser_wrapper(new SqlParserWrapper());
+  std::vector<std::reference_wrapper<const CatalogRelation>> relations;
+  if (arguments.empty()) {
+    relations.insert(relations.begin(), database.begin(), database.end());
+  } else {
+    for (const auto &rel_name : arguments) {
+      const CatalogRelation *rel = database.getRelationByName(rel_name.value());
+      if (rel == nullptr) {
+        THROW_SQL_ERROR_AT(&rel_name) << "Table does not exist";
+      } else {
+        relations.emplace_back(*rel);
+      }
+    }
+  }
+
+  std::vector<QueryHandle*> query_handles;
+  // bucket sizes 
+  const std::size_t bucket_1 = 2; //, bucket_2 = 3;
+  //const std::size_t num_buckets = bucket_1 * bucket_2;
+  const std::size_t N = 2;//should be number of tuples.
+
+  // Analyze each relation in the database.
+  for (const CatalogRelation &relation : relations) {
+    fprintf(out, "Building Histogram %s ... ", relation.getName().c_str());
+    fflush(out);
+
+    const std::string rel_name = EscapeQuotes(relation.getName(), '"');
+
+	std::vector<std::string> *attributes = new std::vector<std::string>();
+    for (const CatalogAttribute &attribute : relation) {
+      	std::string attr_name = EscapeQuotes(attribute.getName(), '"');
+		attributes->emplace_back(attr_name);
+	}
+    /* Get the number of distinct values for each column.
+      const Type &attr_type = attribute.getType();
+      bool is_min_applicable =
+          AggregateFunctionMin::Instance().canApplyToTypes({&attr_type});
+      bool is_max_applicable =
+          AggregateFunctionMax::Instance().canApplyToTypes({&attr_type});
+	*/
+	for (int i = 1; i < 2; i++){
+      std::string query_string = "SELECT * FROM ( SELECT * FROM \"";
+      query_string.append(rel_name);
+      query_string.append("\" ORDER BY ");
+      query_string.append((*attributes)[0]);
+      query_string.append("ASC, ");
+      query_string.append((*attributes)[1]);
+      query_string.append("ASC ) ORDER BY ");
+      query_string.append((*attributes)[1]);
+      query_string.append("ASC LIMIT ");
+      query_string.append(std::to_string(N/bucket_1));
+      query_string.append(" OFFSET ");
+      query_string.append(std::to_string((i-1)*N/bucket_1));
+      query_string.append(";");
+
+	   
+  	  DLOG(INFO) << "jennifer query: " << query_string;
+
+      std::vector<TypedValue> results =
+          ExecuteQueryForSingleRow(main_thread_client_id,
+                                   foreman_client_id,
+                                   query_string,
+                                   bus,
+                                   storage_manager,
+                                   query_processor,
+                                   parser_wrapper.get());
+
+      auto results_it = results.begin();
+      DCHECK_EQ(TypeID::kLong, results_it->getTypeID());
+	  }
+
+    fprintf(out, "done\n");
+    fflush(out);
+  }// end for
+  //query_processor->markCatalogAltered();
+  //query_processor->saveCatalog();
+}
+
 void ExecuteAnalyze(const PtrVector<ParseString> &arguments,
                     const tmb::client_id main_thread_client_id,
                     const tmb::client_id foreman_client_id,
@@ -308,7 +395,16 @@ void executeCommand(const ParseStatement &statement,
       fprintf(out, "%s", table_description.c_str());
     }
   } else if (command_str == kAnalyzeCommand) {
+	if (0) {
     ExecuteAnalyze(arguments,
+                   main_thread_client_id,
+                   foreman_client_id,
+                   bus,
+                   storage_manager,
+                   query_processor, out);
+	
+	}
+    ExecuteBuildHistogram(arguments,
                    main_thread_client_id,
                    foreman_client_id,
                    bus,
