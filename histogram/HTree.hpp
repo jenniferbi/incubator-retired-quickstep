@@ -29,7 +29,7 @@ using std::make_shared;
  * bucket, which has each dimension defined by the key of an ancestor (or the
  * leaf element itself). */
 class interval;
-typedef vector<interval> bucket;
+class bucket;
 class htree_element;
 class htree_node;
 
@@ -97,6 +97,53 @@ public:
 std::ostream& operator<<(std::ostream &os, const interval i) {
     os << "[" << i.min << ", " << i.max << "]";
     return os;
+}
+
+bool operator==(const interval a, const interval b) {
+    return ((!a.has_min && !b.has_min) || (a.min == b.min)) &&
+        ((!a.has_max && !b.has_max) || (a.max == b.max));
+}
+
+bool operator!=(const interval a, const interval b) {
+    return !(a == b);
+}
+
+
+class bucket {
+private:
+    vector<interval> dimensions;
+
+public:
+
+    bucket(vector<interval> dimensions) : dimensions(dimensions) {}
+
+    interval operator[](const int index) const {
+        return dimensions[index];
+    }
+    
+    int size() const {
+        return dimensions.size();
+    }
+
+    const vector<interval> &get_dimensions() const {
+        return dimensions;
+    }
+};
+
+bool operator==(const bucket a, const bucket b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (int i = 0; i < a.size(); i++) {
+        if (a[i] != b[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool operator!=(const bucket a, const bucket b) {
+    return !(a == b);
 }
 
 // Calculate the proportion |this union query_interval| / |this|.
@@ -192,7 +239,7 @@ public:
     htree_element(interval key, shared_ptr<bucket> bkt) :
         key(key), child(nullptr), bkt(bkt) {};
 
-    void print(int indent_level = 0) const;
+    void print(std::ostream &os, int indent_level = 0) const;
 
 };
 
@@ -282,39 +329,43 @@ public:
     }
 
     // Returns a list of pointers to buckets that overlap with the query range.
-    vector< shared_ptr<bucket> > search(const bucket &query_range) {
-        assert(level == query_range.size() - 1); // must start search at root
+    vector< shared_ptr<bucket> > search(const bucket &query_bkt) {
+        assert(level == query_bkt.size() - 1); // must start search at root
         vector< shared_ptr<bucket> > results;
-        search_subhtree(query_range, 0 /* attr_index */, results);
+        search_subhtree(query_bkt, 0 /* attr_index */, results);
         return results;
     }
 
-    void print(int indent_level = 0) const;
+    float estimateSelectivity(const bucket &query_bkt) {
+        return buckets_overlapped(search(query_bkt), query_bkt);
+    }
+
+    void print(std::ostream &os, int indent_level = 0) const;
 };
 
-void htree_element::print(int indent_level) const {
+void htree_element::print(std::ostream &os, int indent_level) const {
     std::string indent = "";
     for (int i = 0; i < indent_level; i++) {
         indent += "\t";
     }
     if (child != nullptr) {
         // Internal element
-        std::cout << indent << key << " {\n";
-        child->print(indent_level + 1);
-        std::cout << indent << "}\n";
+        os << indent << key << " {\n";
+        child->print(os, indent_level + 1);
+        os << indent << "}\n";
     } else {
         // Leaf element
-        std::cout << indent << "{";
-        for (interval i : *bkt) {
-            std::cout << " " << i << ", ";
+        os << indent << "{";
+        for (interval i : bkt->get_dimensions()) {
+            os << " " << i << ",";
         }
-        std::cout << "}\n";
+        os << " }\n";
     }
 }
 
-void htree_node::print(int indent_level) const {
+void htree_node::print(std::ostream &os, int indent_level) const {
     for (htree_element elt : elements) {
-        elt.print(indent_level);
+        elt.print(os, indent_level);
     }
 }
 
