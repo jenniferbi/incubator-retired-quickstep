@@ -30,7 +30,7 @@ target_link_libraries(quickstep_histogram
 #                      quickstep_utility_Macros)
 
 # Tests:
-add_executable(htree_test "${CMAKE_CURRENT_SOURCE_DIR}/htree_test.cpp")
+add_executable(htree_test "${CMAKE_CURRENT_SOURCE_DIR}/tests/HTree_unittest.cpp")
 target_link_libraries(htree_test
 					  glog
 					  gtest
