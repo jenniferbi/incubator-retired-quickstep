@@ -82,6 +82,13 @@ class Sort : public Logical {
     return limit_;
   }
 
+  /**
+   * @return The offset of output sorted rows.
+   */
+  int offset() const {
+    return offset_;
+  }
+
   LogicalPtr copyWithNewChildren(
       const std::vector<LogicalPtr> &new_children) const override;
 
@@ -100,6 +107,7 @@ class Sort : public Logical {
    * @param sort_ascending The vector of ordering directions.
    * @param nulls_first_flags The vector of ordering directions for null values.
    * @param limit The number of output rows. -1 for a full table sort.
+   * @param offset The number of rows skipped.
    *
    * @return An immutable Sort.
    */
@@ -108,12 +116,14 @@ class Sort : public Logical {
       const std::vector<expressions::AttributeReferencePtr> &sort_attributes,
       const std::vector<bool> &sort_ascending,
       const std::vector<bool> &nulls_first_flags,
-      const int limit) {
+      const int limit,
+	  const int offset) {
     return SortPtr(new Sort(input,
                             sort_attributes,
                             sort_ascending,
                             nulls_first_flags,
-                            limit));
+                            limit,
+							offset));
   }
 
   static SortPtr Create(
@@ -121,12 +131,14 @@ class Sort : public Logical {
       std::vector<expressions::AttributeReferencePtr> &&sort_attributes,
       std::vector<bool> &&sort_ascending,
       std::vector<bool> &&nulls_first_flags,
-      const int limit) {
+      const int limit,
+	  const int offset) {
     return SortPtr(new Sort(input,
                             std::move(sort_attributes),
                             std::move(sort_ascending),
                             std::move(nulls_first_flags),
-                            limit));
+                            limit,
+							offset));
   }
 
  protected:
@@ -144,12 +156,14 @@ class Sort : public Logical {
        const std::vector<expressions::AttributeReferencePtr> &sort_attributes,
        const std::vector<bool> &sort_ascending,
        const std::vector<bool> &nulls_first_flags,
-       const int limit)
+       const int limit,
+	   const int offset)
       : input_(input),
         sort_attributes_(sort_attributes),
         sort_ascending_(sort_ascending),
         nulls_first_flags_(nulls_first_flags),
-        limit_(limit) {
+        limit_(limit),
+		offset_(offset) {
     addChild(input_);
   }
 
@@ -157,12 +171,14 @@ class Sort : public Logical {
        std::vector<expressions::AttributeReferencePtr> &&sort_attributes,
        std::vector<bool> &&sort_ascending,
        std::vector<bool> &&nulls_first_flags,
-       const int limit)
+       const int limit,
+	   const int offset)
       : input_(input),
         sort_attributes_(std::move(sort_attributes)),
         sort_ascending_(std::move(sort_ascending)),
         nulls_first_flags_(std::move(nulls_first_flags)),
-        limit_(limit) {
+        limit_(limit),
+		offset_(offset) {
     addChild(input_);
   }
 
@@ -172,6 +188,7 @@ class Sort : public Logical {
   const std::vector<bool> sort_ascending_;
   const std::vector<bool> nulls_first_flags_;
   const int limit_;
+  const int offset_;
 
   DISALLOW_COPY_AND_ASSIGN(Sort);
 };

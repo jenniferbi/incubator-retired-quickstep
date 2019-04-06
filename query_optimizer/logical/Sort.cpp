@@ -38,7 +38,7 @@ namespace E = ::quickstep::optimizer::expressions;
 LogicalPtr Sort::copyWithNewChildren(
     const std::vector<LogicalPtr> &new_children) const {
   DCHECK_EQ(getNumChildren(), new_children.size());
-  return Create(new_children[0], sort_attributes_, sort_ascending_, nulls_first_flags_, limit_);
+  return Create(new_children[0], sort_attributes_, sort_ascending_, nulls_first_flags_, limit_, offset_);
 }
 
 void Sort::getFieldStringItems(

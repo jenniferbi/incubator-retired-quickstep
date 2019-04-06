@@ -1496,14 +1496,16 @@ L::LogicalPtr Resolver::resolveSelect(
                           std::move(order_by_attributes),
                           std::move(order_by_directions),
                           std::move(nulls_first),
-                          select_query.limit()->limit_expression()->long_value());
+                          select_query.limit()->limit_expression()->long_value(),
+						  select_query.offset()->offset_expression()->long_value());
     } else {
       logical_plan =
           L::Sort::Create(logical_plan,
                           std::move(order_by_attributes),
                           std::move(order_by_directions),
                           std::move(nulls_first),
-                          -1 /* limit */);
+                          -1 /* limit */,
+						  0 /* offset */);
     }
   } else if (select_query.limit() != nullptr) {
     THROW_SQL_ERROR_AT(select_query.limit())
@@ -2302,7 +2304,8 @@ L::LogicalPtr Resolver::resolveSortInWindow(
                       std::move(sort_attributes),
                       std::move(sort_directions),
                       std::move(sort_nulls_first),
-                      -1 /* limit */);
+                      -1 /* limit */,
+					  0 /* offset */);
 
   return sorted_logical_plan;
 }

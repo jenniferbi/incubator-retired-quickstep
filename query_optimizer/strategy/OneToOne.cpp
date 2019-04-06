@@ -230,7 +230,8 @@ bool OneToOne::generatePlan(const L::LogicalPtr &logical_input,
           non_sort_attributes,
           sort->sort_ascending(),
           sort->nulls_first_flags(),
-          sort->limit());
+          sort->limit(),
+		  sort->offset());
       return true;
     }
     case L::LogicalType::kTableGenerator: {

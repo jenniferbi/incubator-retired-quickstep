@@ -46,7 +46,8 @@ bool Sort::maybeCopyWithPrunedExpressions(
                      new_non_sort_attributes,
                      sort_ascending_,
                      nulls_first_flags_,
-                     limit_);
+                     limit_,
+					 offset_);
     return true;
   }
   return false;

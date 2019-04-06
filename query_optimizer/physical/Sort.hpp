@@ -89,6 +89,13 @@ class Sort : public Physical {
     return limit_;
   }
 
+  /**
+   * @return The number of rows skipped.
+   */
+  int offset() const {
+    return offset_;
+  }
+
   std::vector<expressions::AttributeReferencePtr> getOutputAttributes() const override {
     return input_->getOutputAttributes();
   }
@@ -109,7 +116,8 @@ class Sort : public Physical {
                   non_sort_attributes_,
                   sort_ascending_,
                   nulls_first_flags_,
-                  limit_);
+                  limit_,
+				  offset_);
   }
 
   bool maybeCopyWithPrunedExpressions(
@@ -125,6 +133,7 @@ class Sort : public Physical {
    * @param sort_ascending The vector of ordering directions.
    * @param nulls_first_flags The vector of ordering directions for null values.
    * @param limit The number of output rows. -1 for a full table sort.
+   * @param offset The number of rows skipped.
    *
    * @return An immutable physical Sort.
    */
@@ -133,7 +142,8 @@ class Sort : public Physical {
                         const std::vector<expressions::AttributeReferencePtr> &non_sort_attributes,
                         const std::vector<bool> &sort_ascending,
                         const std::vector<bool> &nulls_first_flags,
-                        const int limit) {
+                        const int limit,
+						const int offset) {
     DCHECK_EQ(sort_attributes.size(), sort_ascending.size());
     DCHECK_EQ(sort_attributes.size(), nulls_first_flags.size());
 
@@ -142,7 +152,8 @@ class Sort : public Physical {
                             non_sort_attributes,
                             sort_ascending,
                             nulls_first_flags,
-                            limit));
+                            limit,
+							offset));
   }
 
  protected:
@@ -159,13 +170,15 @@ class Sort : public Physical {
        const std::vector<expressions::AttributeReferencePtr> &non_sort_attributes,
        const std::vector<bool> &sort_ascending,
        const std::vector<bool> &nulls_first_flags,
-       const int limit)
+       const int limit,
+	   const int offset)
       : input_(input),
         sort_attributes_(sort_attributes),
         non_sort_attributes_(non_sort_attributes),
         sort_ascending_(sort_ascending),
         nulls_first_flags_(nulls_first_flags),
-        limit_(limit) {
+        limit_(limit),
+		offset_(offset) {
     addChild(input);
   }
 
@@ -180,6 +193,7 @@ class Sort : public Physical {
   const std::vector<bool> sort_ascending_;
   const std::vector<bool> nulls_first_flags_;
   const int limit_;
+  const int offset_;
 
   DISALLOW_COPY_AND_ASSIGN(Sort);
 };
