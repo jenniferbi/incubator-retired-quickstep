@@ -447,5 +447,6 @@ interval get_attr_interval(
     return { key_min, key_max };
 }
 
+
 } // namespace quickstep
 #endif  // QUICKSTEP_HTREE_HTREE_HPP_
