@@ -395,7 +395,6 @@ void executeCommand(const ParseStatement &statement,
       fprintf(out, "%s", table_description.c_str());
     }
   } else if (command_str == kAnalyzeCommand) {
-	if (0) {
     ExecuteAnalyze(arguments,
                    main_thread_client_id,
                    foreman_client_id,
@@ -403,7 +402,7 @@ void executeCommand(const ParseStatement &statement,
                    storage_manager,
                    query_processor, out);
 	
-	}
+  } else if (command_str == kHistogramCommand) {
     ExecuteBuildHistogram(arguments,
                    main_thread_client_id,
                    foreman_client_id,

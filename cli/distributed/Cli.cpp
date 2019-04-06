@@ -170,7 +170,8 @@ void Cli::run() {
           try {
             if (command != C::kAnalyzeCommand &&
                 command != C::kDescribeDatabaseCommand &&
-                command != C::kDescribeTableCommand) {
+                command != C::kDescribeTableCommand &&
+				command != C::kHistogramCommand) {
               THROW_SQL_ERROR_AT(parse_command.command()) << "Invalid Command";
             }
           } catch (const SqlError &error) {

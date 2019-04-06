@@ -17,24 +17,7 @@
  * under the License.
  **/
 
-#ifndef QUICKSTEP_CLI_CONSTANTS_HPP_
-#define QUICKSTEP_CLI_CONSTANTS_HPP_
-
-namespace quickstep {
-namespace cli {
-
-/** \addtogroup CLI
- *  @{
- */
-
-constexpr char kDescribeDatabaseCommand[] = "\\dt";
-constexpr char kDescribeTableCommand[] = "\\d";
-constexpr char kAnalyzeCommand[] = "\\analyze";
-constexpr char kHistogramCommand[] = "\\histogram";
-
-/** @} */
-
-}  // namespace cli
-}  // namespace quickstep
-
-#endif  // QUICKSTEP_CLI_CONSTANTS_HPP_
+/** @defgroup HTree
+ *
+ * The QuickStep histogram.
+ **/

@@ -735,6 +735,7 @@ add_subdirectory(transaction)
 add_subdirectory(types)
 add_subdirectory(utility)
 add_subdirectory(yarn)
+add_subdirectory(histogram)
 
 # Build the quickstep_cli_shell executable.
 add_executable(quickstep_cli_shell cli/QuickstepCli.cpp)
