@@ -223,13 +223,13 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
       query_string.append((*attributes)[0]);
       query_string.append("ASC, ");
       query_string.append((*attributes)[1]);
-      query_string.append("ASC ) ORDER BY ");
-      query_string.append((*attributes)[1]);
       query_string.append("ASC LIMIT ");
       query_string.append(std::to_string(N/bucket_1));
       query_string.append(" OFFSET ");
       query_string.append(std::to_string((i-1)*N/bucket_1));
-      query_string.append(";");
+      query_string.append(") AS tmp ORDER BY ");
+      query_string.append((*attributes)[1]);
+      query_string.append(" ASC;");
 
 	   
   	  DLOG(INFO) << "jennifer query: " << query_string;

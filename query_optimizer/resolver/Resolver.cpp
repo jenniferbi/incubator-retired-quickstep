@@ -1490,7 +1490,7 @@ L::LogicalPtr Resolver::resolveSelect(
       logical_plan = L::Project::Create(logical_plan, wrap_project_expressions);
     }
 
-    if (select_query.limit() != nullptr) {
+    if (select_query.limit() != nullptr && select_query.offset() != nullptr) {
       logical_plan =
           L::Sort::Create(logical_plan,
                           std::move(order_by_attributes),
@@ -1498,6 +1498,18 @@ L::LogicalPtr Resolver::resolveSelect(
                           std::move(nulls_first),
                           select_query.limit()->limit_expression()->long_value(),
 						  select_query.offset()->offset_expression()->long_value());
+	} else if (select_query.limit() != nullptr) {
+      logical_plan =
+          L::Sort::Create(logical_plan,
+                          std::move(order_by_attributes),
+                          std::move(order_by_directions),
+                          std::move(nulls_first),
+                          select_query.limit()->limit_expression()->long_value(),
+						  0 /* offset */);
+	} else if (select_query.offset() != nullptr) {
+		/* offset without limit */
+		THROW_SQL_ERROR_AT(select_query.offset())
+			<< "OFFSET is not supported without LIMIT";
     } else {
       logical_plan =
           L::Sort::Create(logical_plan,
@@ -1510,6 +1522,9 @@ L::LogicalPtr Resolver::resolveSelect(
   } else if (select_query.limit() != nullptr) {
     THROW_SQL_ERROR_AT(select_query.limit())
         << "LIMIT is not supported without ORDER BY";
+  } else if (select_query.offset() != nullptr) {
+    THROW_SQL_ERROR_AT(select_query.offset())
+        << "OFFSET is not supported without ORDER BY, LIMIT";
   }
 
   logical_plan = L::Project::Create(logical_plan, select_list_expressions);

@@ -148,10 +148,9 @@ void RunMerger::doMerge() {
 
   if (input_runs_.size() == 1) {
     // Only one input run; use fast copy implementation.
-    if (top_k_ > 0) {
-	  if (off_ > 0) {
-      	copyToOutput<true, true>(input_runs_[0], first_accessor.get());
-	  }
+    if (top_k_ > 0 && off_ > 0) {
+      copyToOutput<true, true>(input_runs_[0], first_accessor.get());
+	} else if (top_k_ > 0) {
       copyToOutput<true, false>(input_runs_[0], first_accessor.get());
     } else {
       copyToOutput<false, false>(input_runs_[0], first_accessor.get());
@@ -159,19 +158,17 @@ void RunMerger::doMerge() {
   } else if (sort_config_.getOrderByList().size() == 1) {
     // Only one ORDER BY column; use fast implementation for this case.
     if (sort_config_.getNullOrdering()[0] == kSortNullLast) {
-      if (top_k_ > 0) {
-	    if (off_ > 0) {
-        	mergeSingleColumnNullLast<true, true>(first_accessor.get());
-		}
+      if (top_k_ > 0 && off_ > 0) {
+        mergeSingleColumnNullLast<true, true>(first_accessor.get());
+	  } else if (top_k_ > 0) {
         mergeSingleColumnNullLast<true, false>(first_accessor.get());
       } else {
         mergeSingleColumnNullLast<false, false>(first_accessor.get());
       }
     } else {
-      if (top_k_ > 0) {
-	    if (off_ > 0) {
-        	mergeSingleColumnNullFirst<true, true>(first_accessor.get());
-		}
+      if (top_k_ > 0 && off_ > 0) {
+        mergeSingleColumnNullFirst<true, true>(first_accessor.get());
+	  } else if (top_k_ > 0) {
         mergeSingleColumnNullFirst<true, false>(first_accessor.get());
       } else {
         mergeSingleColumnNullFirst<false, false>(first_accessor.get());
@@ -180,10 +177,9 @@ void RunMerger::doMerge() {
   } else {
     // Fallback to generic implementation for any number of input runs and ORDER
     // BY columns.
-    if (top_k_ > 0) {
-	  if (off_ > 0) {
-        mergeGeneric<true, true>(first_accessor.get());
-	  }
+    if (top_k_ > 0 && off_ > 0) {
+      mergeGeneric<true, true>(first_accessor.get());
+	} else if (top_k_ > 0) {
       mergeGeneric<true, false>(first_accessor.get());
     } else {
       mergeGeneric<false, false>(first_accessor.get());
