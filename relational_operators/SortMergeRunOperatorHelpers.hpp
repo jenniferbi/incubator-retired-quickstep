@@ -409,7 +409,7 @@ class RunMerger {
   // '*first_accessor' is an accessor on the first input block, used only to
   // determine the ValueAccessor type used to access all the blocks in the
   // runs.
-  template <bool check_top_k>
+  template <bool check_top_k, bool check_offset>
   void mergeGeneric(ValueAccessor *first_accessor);
 
   // Merge implementation specialized for single-column ORDER BY sort
@@ -417,7 +417,7 @@ class RunMerger {
   // beginning, we cycle through all the runs first and write out the NULLs,
   // before doing the merge. This makes the comparator have no branches. As
   // above, '*first_accessor' is used only to determine the ValueAccessor type.
-  template <bool check_top_k>
+  template <bool check_top_k, bool check_offset>
   void mergeSingleColumnNullFirst(ValueAccessor *first_accessor);
 
   // Merge implementation specialized for single-column ORDER BY sort
@@ -425,11 +425,11 @@ class RunMerger {
   // the runs, we use the heap to sort all non-NULL values first and then cycle
   // through the runs to write out the NULLs. As above, '*first_accessor' is
   // used only to determine the ValueAccessor type.
-  template <bool check_top_k>
+  template <bool check_top_k, bool check_offset>
   void mergeSingleColumnNullLast(ValueAccessor *first_accessor);
 
   // Trivial implementation to copy a run.
-  template <bool check_top_k>
+  template <bool check_top_k, bool check_offset>
   void copyToOutput(const Run &run, ValueAccessor *first_accessor);
 
   const SortConfiguration &sort_config_;

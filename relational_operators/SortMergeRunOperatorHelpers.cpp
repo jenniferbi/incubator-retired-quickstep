@@ -149,32 +149,44 @@ void RunMerger::doMerge() {
   if (input_runs_.size() == 1) {
     // Only one input run; use fast copy implementation.
     if (top_k_ > 0) {
-      copyToOutput<true>(input_runs_[0], first_accessor.get());
+	  if (off_ > 0) {
+      	copyToOutput<true, true>(input_runs_[0], first_accessor.get());
+	  }
+      copyToOutput<true, false>(input_runs_[0], first_accessor.get());
     } else {
-      copyToOutput<false>(input_runs_[0], first_accessor.get());
+      copyToOutput<false, false>(input_runs_[0], first_accessor.get());
     }
   } else if (sort_config_.getOrderByList().size() == 1) {
     // Only one ORDER BY column; use fast implementation for this case.
     if (sort_config_.getNullOrdering()[0] == kSortNullLast) {
       if (top_k_ > 0) {
-        mergeSingleColumnNullLast<true>(first_accessor.get());
+	    if (off_ > 0) {
+        	mergeSingleColumnNullLast<true, true>(first_accessor.get());
+		}
+        mergeSingleColumnNullLast<true, false>(first_accessor.get());
       } else {
-        mergeSingleColumnNullLast<false>(first_accessor.get());
+        mergeSingleColumnNullLast<false, false>(first_accessor.get());
       }
     } else {
       if (top_k_ > 0) {
-        mergeSingleColumnNullFirst<true>(first_accessor.get());
+	    if (off_ > 0) {
+        	mergeSingleColumnNullFirst<true, true>(first_accessor.get());
+		}
+        mergeSingleColumnNullFirst<true, false>(first_accessor.get());
       } else {
-        mergeSingleColumnNullFirst<false>(first_accessor.get());
+        mergeSingleColumnNullFirst<false, false>(first_accessor.get());
       }
     }
   } else {
     // Fallback to generic implementation for any number of input runs and ORDER
     // BY columns.
     if (top_k_ > 0) {
-      mergeGeneric<true>(first_accessor.get());
+	  if (off_ > 0) {
+        mergeGeneric<true, true>(first_accessor.get());
+	  }
+      mergeGeneric<true, false>(first_accessor.get());
     } else {
-      mergeGeneric<false>(first_accessor.get());
+      mergeGeneric<false, false>(first_accessor.get());
     }
   }
 
@@ -183,7 +195,7 @@ void RunMerger::doMerge() {
   output_run_creator_.flushBlock();
 }
 
-template <bool check_top_k>
+template <bool check_top_k, bool check_offset>
 void RunMerger::mergeGeneric(ValueAccessor *first_accessor) {
   GenericHeapComparatorInternal comp_internal(sort_config_);
 
@@ -217,7 +229,7 @@ void RunMerger::mergeGeneric(ValueAccessor *first_accessor) {
       heap.pop_back();
 
 	  // Skip first off_ rows
-	  if (++num_skipped <= off_) {
+	  if (check_offset && (++num_skipped <= off_)) {
 		continue;
 	  }
 
@@ -239,7 +251,7 @@ void RunMerger::mergeGeneric(ValueAccessor *first_accessor) {
   });
 }
 
-template <bool check_top_k>
+template <bool check_top_k, bool check_offset>
 void RunMerger::mergeSingleColumnNullFirst(ValueAccessor *first_accessor) {
   const attribute_id attr_id =
       sort_config_.getOrderByList()[0].getAttributeIdForValueAccessor();
@@ -270,7 +282,7 @@ void RunMerger::mergeSingleColumnNullFirst(ValueAccessor *first_accessor) {
         const void *value = run_it->getValueAccessor()->getUntypedValue(attr_id);
         if (value == nullptr) {
 		  // Skip first off_ rows
-		  if (++num_skipped <= off_) {
+		  if (check_offset && (++num_skipped <= off_)) {
 			continue;
 		  }
           // NULL value; insert tuple into output run.
@@ -298,7 +310,7 @@ void RunMerger::mergeSingleColumnNullFirst(ValueAccessor *first_accessor) {
 
     while (!heap.empty()) {
 	  // Skip first off_ rows
-      if (++num_skipped <= off_) {
+      if (check_offset && (++num_skipped <= off_)) {
         continue;
       }
       // Pop the top tuple from heap.
@@ -326,7 +338,7 @@ void RunMerger::mergeSingleColumnNullFirst(ValueAccessor *first_accessor) {
   });
 }
 
-template <bool check_top_k>
+template <bool check_top_k, bool check_offset>
 void RunMerger::mergeSingleColumnNullLast(ValueAccessor *first_accessor) {
   const attribute_id attr_id =
       sort_config_.getOrderByList()[0].getAttributeIdForValueAccessor();
@@ -374,7 +386,7 @@ void RunMerger::mergeSingleColumnNullLast(ValueAccessor *first_accessor) {
       heap.pop_back();
 	  
 	  // Skip first off_ rows
-      if (++num_skipped <= off_) {
+      if (check_offset && (++num_skipped <= off_)) {
         continue;
       }
 
@@ -407,7 +419,7 @@ void RunMerger::mergeSingleColumnNullLast(ValueAccessor *first_accessor) {
       do {
 
 		// Skip first off_ rows
-		if (++num_skipped <= off_) {
+		if (check_offset && (++num_skipped <= off_)) {
 			continue;
 		}
 
@@ -422,7 +434,7 @@ void RunMerger::mergeSingleColumnNullLast(ValueAccessor *first_accessor) {
   });
 }
 
-template <bool check_top_k>
+template <bool check_top_k, bool check_offset>
 void RunMerger::copyToOutput(const Run &run,
                              ValueAccessor *first_accessor) {
   DEBUG_ASSERT(input_runs_.size() == 1);
@@ -437,7 +449,7 @@ void RunMerger::copyToOutput(const Run &run,
     std::size_t num_tuples = 0, num_skipped = 0;
 
     while (run_it.next()) {
-      if (++num_skipped <= off_) {
+      if (check_offset && (++num_skipped <= off_)) {
         continue;
       }
 
