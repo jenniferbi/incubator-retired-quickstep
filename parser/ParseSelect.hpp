@@ -27,6 +27,7 @@
 #include "parser/ParseGroupBy.hpp"
 #include "parser/ParseHaving.hpp"
 #include "parser/ParseLimit.hpp"
+#include "parser/ParseOffset.hpp"
 #include "parser/ParseOrderBy.hpp"
 #include "parser/ParsePredicate.hpp"
 #include "parser/ParseSelectionClause.hpp"
@@ -62,6 +63,7 @@ class ParseSelect : public ParseTreeNode {
    * @param having_predicate Optional parsed HAVING clause. Becomes owned by this ParseStatementSelect.
    * @param order_by Optional parsed ORDER BY clause. Becomes owned by this ParseStatementSelect.
    * @param limit Optional parsed LIMIT clause. Becomes owned by this ParseStatementSelect.
+   * @param offset Optional parsed OFFSET clause. Becomes owned by this ParseStatementSelect.
    **/
   ParseSelect(const int line_number,
               const int column_number,
@@ -72,6 +74,7 @@ class ParseSelect : public ParseTreeNode {
               ParseHaving *having,
               ParseOrderBy *order_by,
               ParseLimit *limit,
+              ParseOffset *offset,
               PtrList<ParseWindow> *window_list)
       : ParseTreeNode(line_number, column_number),
         selection_(selection),
@@ -81,6 +84,7 @@ class ParseSelect : public ParseTreeNode {
         having_(having),
         order_by_(order_by),
         limit_(limit),
+        offset_(offset),
         window_list_(window_list) {
   }
 
@@ -158,6 +162,12 @@ class ParseSelect : public ParseTreeNode {
   const ParseLimit* limit() const { return limit_.get(); }
 
   /**
+   * @brief Gets the parsed OFFSET.
+   *
+   * @return The parsed OFFSET.
+   */
+  const ParseOffset* offset() const { return offset_.get(); }
+  /**
    * @brief Gets the parsed WINDOW.
    *
    * @return The parsed WINDOW.
@@ -208,6 +218,11 @@ class ParseSelect : public ParseTreeNode {
       non_container_child_fields->push_back(limit_.get());
     }
 
+    if (offset_ != nullptr) {
+      non_container_child_field_names->push_back("offset");
+      non_container_child_fields->push_back(offset_.get());
+    }
+
     if (window_list_ != nullptr) {
       container_child_field_names->push_back("window_list");
       container_child_fields->emplace_back();
@@ -225,6 +240,7 @@ class ParseSelect : public ParseTreeNode {
   std::unique_ptr<ParseHaving> having_;
   std::unique_ptr<ParseOrderBy> order_by_;
   std::unique_ptr<ParseLimit> limit_;
+  std::unique_ptr<ParseOffset> offset_;
   std::unique_ptr<PtrList<ParseWindow>> window_list_;
 
   DISALLOW_COPY_AND_ASSIGN(ParseSelect);

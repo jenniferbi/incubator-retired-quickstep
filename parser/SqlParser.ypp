@@ -79,6 +79,7 @@ typedef struct YYLTYPE {
 #include "parser/ParseJoinedTableReference.hpp"
 #include "parser/ParseKeyValue.hpp"
 #include "parser/ParseLimit.hpp"
+#include "parser/ParseOffset.hpp"
 #include "parser/ParseLiteralValue.hpp"
 #include "parser/ParseOrderBy.hpp"
 #include "parser/ParsePartitionClause.hpp"
@@ -202,6 +203,7 @@ typedef void* yyscan_t;
   quickstep::ParseOrderBy *opt_order_by_clause_;
   bool *order_direction_;
   quickstep::ParseLimit *opt_limit_clause_;
+  quickstep::ParseOffset *opt_offset_clause_;
 
   quickstep::ParseSample *opt_sample_clause_;
 
@@ -310,6 +312,7 @@ void NotSupported(const YYLTYPE *location, yyscan_t yyscanner, const std::string
 %token TOKEN_LEFT;
 %token TOKEN_LEX_ERROR;
 %token TOKEN_LIMIT;
+%token TOKEN_OFFSET;
 %token TOKEN_LONG;
 %token TOKEN_MINUTE;
 %token TOKEN_MONTH;
@@ -582,6 +585,9 @@ void NotSupported(const YYLTYPE *location, yyscan_t yyscanner, const std::string
 
 %type <opt_limit_clause_>
   opt_limit_clause
+
+%type <opt_offset_clause_>
+  opt_offset_clause
 
 %type <opt_sample_clause_>
   opt_sample_clause
@@ -1266,8 +1272,8 @@ set_operation_intersect:
 
 select_query:
   TOKEN_SELECT opt_all_distinct selection from_clause opt_where_clause opt_group_by_clause opt_having_clause
-      opt_order_by_clause opt_limit_clause opt_window_clause {
-    $$ = new quickstep::ParseSelect(@1.first_line, @1.first_column, $3, $4, $5, $6, $7, $8, $9, $10);
+      opt_order_by_clause opt_limit_clause opt_offset_clause opt_window_clause {
+    $$ = new quickstep::ParseSelect(@1.first_line, @1.first_column, $3, $4, $5, $6, $7, $8, $9, $10, $11);
   }
 
 opt_all_distinct:
@@ -1456,6 +1462,28 @@ opt_limit_clause:
         YYERROR;
       } else {
         $$ = new quickstep::ParseLimit(@1.first_line, @1.first_column, $2);
+      }
+    }
+  }
+
+opt_offset_clause:
+  {
+    $$ = nullptr;
+  }
+  | TOKEN_OFFSET TOKEN_UNSIGNED_NUMVAL {
+    if ($2->float_like()) {
+      delete $2;
+      $$ = nullptr;
+      quickstep_yyerror(&@2, yyscanner, nullptr, "OFFSET value must be an integer");
+      YYERROR;
+    } else {
+      if ($2->long_value() <= 0) {
+        delete $2;
+        $$ = nullptr;
+        quickstep_yyerror(&@2, yyscanner, nullptr, "OFFSET value must be positive");
+        YYERROR;
+      } else {
+        $$ = new quickstep::ParseOffset(@1.first_line, @1.first_column, $2);
       }
     }
   }

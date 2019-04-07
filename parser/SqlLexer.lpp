@@ -57,6 +57,7 @@ class ParseKeyStringValue;
 class ParseKeyStringList;
 class ParseKeyValue;
 class ParseLimit;
+class ParseOffset;
 class ParseOrderBy;
 class ParseOrderByItem;
 class ParsePartitionClause;
@@ -244,6 +245,7 @@ unsigned_numeric_literal {exact_numeric_literal}|{approximate_numeric_literal}
   "null"             return TOKEN_NULL;
   "nulls"            return TOKEN_NULLS;
   "off"              return TOKEN_OFF;
+  "offset"           return TOKEN_OFFSET;
   "on"               return TOKEN_ON;
   "or"               return TOKEN_OR;
   "order"            return TOKEN_ORDER;

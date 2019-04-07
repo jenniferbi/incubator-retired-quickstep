@@ -98,6 +98,7 @@ add_library(quickstep_parser_ParseIndexProperties ParseIndexProperties.cpp Parse
 add_library(quickstep_parser_ParseJoinedTableReference ParseJoinedTableReference.cpp ParseJoinedTableReference.hpp)
 add_library(quickstep_parser_ParseKeyValue ../empty_src.cpp ParseKeyValue.hpp)
 add_library(quickstep_parser_ParseLimit ParseLimit.cpp ParseLimit.hpp)
+add_library(quickstep_parser_ParseOffset ParseOffset.cpp ParseOffset.hpp)
 add_library(quickstep_parser_ParseLiteralValue ParseLiteralValue.cpp ParseLiteralValue.hpp)
 add_library(quickstep_parser_ParseOrderBy ParseOrderBy.cpp ParseOrderBy.hpp)
 add_library(quickstep_parser_ParsePartitionClause ../empty_src.cpp ParsePartitionClause.hpp)
@@ -255,6 +256,7 @@ target_link_libraries(quickstep_parser_ParseSelect
                       quickstep_parser_ParseGroupBy
                       quickstep_parser_ParseHaving
                       quickstep_parser_ParseLimit
+                      quickstep_parser_ParseOffset
                       quickstep_parser_ParseOrderBy
                       quickstep_parser_ParsePredicate
                       quickstep_parser_ParseSelectionClause
@@ -349,6 +351,7 @@ target_link_libraries(quickstep_parser_SqlParser
                       quickstep_parser_ParseJoinedTableReference
                       quickstep_parser_ParseKeyValue
                       quickstep_parser_ParseLimit
+                      quickstep_parser_ParseOffset
                       quickstep_parser_ParseLiteralValue
                       quickstep_parser_ParseOrderBy
                       quickstep_parser_ParsePartitionClause
@@ -429,6 +432,7 @@ target_link_libraries(quickstep_parser
                       quickstep_parser_ParseJoinedTableReference
                       quickstep_parser_ParseKeyValue
                       quickstep_parser_ParseLimit
+                      quickstep_parser_ParseOffset
                       quickstep_parser_ParseLiteralValue
                       quickstep_parser_ParseOrderBy
                       quickstep_parser_ParsePartitionClause
