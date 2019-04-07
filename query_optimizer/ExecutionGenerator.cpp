@@ -2318,6 +2318,7 @@ void ExecutionGenerator::convertSort(const P::SortPtr &physical_sort) {
           sort_merge_run_config_id,
           64 /* merge_factor */,
           physical_sort->limit(),
+          physical_sort->offset(),
           false /* input_relation_is_stored */));
 
   execution_plan_->addDirectDependency(merge_run_operator_index,

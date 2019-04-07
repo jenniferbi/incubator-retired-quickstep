@@ -273,6 +273,7 @@ message SortMergeRunWorkOrder {
     optional uint64 merge_level = 260;
     optional int32 relation_id = 261;
     optional int32 insert_destination_index = 262;
+    optional uint64 off = 263;
   }
 }
 

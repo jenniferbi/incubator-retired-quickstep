@@ -91,8 +91,9 @@ class SortMergeRunOperator : public RelationalOperator {
    * @param sort_config_index The index of the Sort configuration in
    *        QueryContext.
    * @param merge_factor Merge factor of this operator.
-   * @param top_k Only return the first \c top_k results. Return all results if
+   * @param top_k Only return \c top_k results. Return all results if
    *              \c top_k is 0.
+   * @param off Skip the first off rows. 
    * @param input_relation_is_stored Boolean to indicate is input relation is
    *                                 stored or streamed.
    **/
@@ -105,7 +106,8 @@ class SortMergeRunOperator : public RelationalOperator {
       const QueryContext::insert_destination_id run_block_destination_index,
       const QueryContext::sort_config_id sort_config_index,
       const std::size_t merge_factor,
-      const std::size_t top_k,
+	  const std::size_t top_k,
+      const std::size_t off,
       const bool input_relation_is_stored)
       : RelationalOperator(query_id, 1u /* input_num_partitions */, false /* has_repartition */,
                            1u /* output_num_partition */),
@@ -115,6 +117,7 @@ class SortMergeRunOperator : public RelationalOperator {
         sort_config_index_(sort_config_index),
         merge_factor_(merge_factor),
         top_k_(top_k),
+        off_(off),
         merge_tree_(merge_factor_),
         input_relation_block_ids_(input_relation_is_stored
                                       ? input_relation.getBlocksSnapshot()
@@ -204,6 +207,7 @@ class SortMergeRunOperator : public RelationalOperator {
   const QueryContext::sort_config_id sort_config_index_;
   const std::size_t merge_factor_;
   const std::size_t top_k_;
+  const std::size_t off_;
   merge_run_operator::MergeTree merge_tree_;  // Merge tree for sorting.
 
   std::vector<block_id> input_relation_block_ids_;
@@ -233,6 +237,7 @@ class SortMergeRunWorkOrder : public WorkOrder {
    * @param run_relation The relation to which the run blocks belong to.
    * @param input_runs Input runs to merge.
    * @param top_k If non-zero will merge only \c top_k tuples.
+   * @param off skip \c off tuples.
    * @param merge_level Merge level in the merge tree.
    * @param output_destination The InsertDestination to create new blocks.
    * @param storage_manager The StorageManager to use.
@@ -247,6 +252,7 @@ class SortMergeRunWorkOrder : public WorkOrder {
       const CatalogRelationSchema &run_relation,
       std::vector<merge_run_operator::Run> &&input_runs,
       const std::size_t top_k,
+      const std::size_t off,
       const std::size_t merge_level,
       InsertDestination *output_destination,
       StorageManager *storage_manager,
@@ -258,6 +264,7 @@ class SortMergeRunWorkOrder : public WorkOrder {
         run_relation_(run_relation),
         input_runs_(std::move(input_runs)),
         top_k_(top_k),
+        off_(off),
         merge_level_(merge_level),
         output_destination_(DCHECK_NOTNULL(output_destination)),
         storage_manager_(DCHECK_NOTNULL(storage_manager)),
@@ -276,6 +283,7 @@ class SortMergeRunWorkOrder : public WorkOrder {
   const CatalogRelationSchema &run_relation_;
   std::vector<merge_run_operator::Run> input_runs_;
   const std::size_t top_k_;
+  const std::size_t off_;
   const std::size_t merge_level_;
 
   InsertDestination *output_destination_;

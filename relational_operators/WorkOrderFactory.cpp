@@ -519,6 +519,7 @@ WorkOrder* WorkOrderFactory::ReconstructFromProto(const serialization::WorkOrder
               proto.GetExtension(serialization::SortMergeRunWorkOrder::relation_id)),
           move(runs),
           proto.GetExtension(serialization::SortMergeRunWorkOrder::top_k),
+          proto.GetExtension(serialization::SortMergeRunWorkOrder::off),
           proto.GetExtension(serialization::SortMergeRunWorkOrder::merge_level),
           query_context->getInsertDestination(
               proto.GetExtension(serialization::SortMergeRunWorkOrder::insert_destination_index)),

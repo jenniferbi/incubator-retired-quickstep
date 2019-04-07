@@ -125,6 +125,7 @@ serialization::WorkOrder* SortMergeRunOperator::createWorkOrderProto(
   }
 
   proto->SetExtension(serialization::SortMergeRunWorkOrder::top_k, top_k_);
+  proto->SetExtension(serialization::SortMergeRunWorkOrder::off, off_);
   proto->SetExtension(serialization::SortMergeRunWorkOrder::merge_level, job->level);
   proto->SetExtension(serialization::SortMergeRunWorkOrder::relation_id,
                       job->level > 0 ? run_relation_.getID()
@@ -157,6 +158,7 @@ WorkOrder *SortMergeRunOperator::createWorkOrder(
       job->level > 0 ? run_relation_ : input_relation_,
       std::move(job->runs),
       top_k_,
+	  off_,
       job->level,
       output_destination,
       storage_manager,
@@ -308,6 +310,7 @@ void SortMergeRunWorkOrder::execute() {
   merge_run_operator::RunMerger run_merger(sort_config_,
                                            std::move(input_runs_),
                                            top_k_,
+										   off_,
                                            run_relation_,
                                            output_destination_,
                                            merge_level_,

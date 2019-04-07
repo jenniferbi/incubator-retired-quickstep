@@ -363,6 +363,7 @@ class RunMerger {
    * @param runs Vector of runs. R-valued. Moves and takes ownership of runs.
    * @param top_k Only keep the top-k results of the merge. All the tuples are
    *        kept if \c top_k is 0.
+   * @param off skip \c off rows. 
    * @param run_relation Relation that runs belong to.
    * @param output_destination The InsertDestination that stores the merge run.
    * @param level Merge level of this merge.
@@ -371,6 +372,7 @@ class RunMerger {
   RunMerger(const SortConfiguration &sort_config,
             std::vector<Run> &&runs,
             std::size_t top_k,
+            std::size_t off,
             const CatalogRelationSchema &run_relation,
             InsertDestination *output_destination,
             const std::size_t level,
@@ -378,6 +380,7 @@ class RunMerger {
       : sort_config_(sort_config),
         input_runs_(std::move(runs)),
         top_k_(top_k),
+        off_(off),
         output_run_(),
         output_run_creator_(&output_run_, output_destination),
         run_relation_(run_relation),
@@ -432,6 +435,7 @@ class RunMerger {
   const SortConfiguration &sort_config_;
   std::vector<Run> input_runs_;
   const std::size_t top_k_;
+  const std::size_t off_;
   Run output_run_;
   RunCreator output_run_creator_;
   const CatalogRelationSchema &run_relation_;

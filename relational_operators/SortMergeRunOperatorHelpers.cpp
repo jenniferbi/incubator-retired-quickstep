@@ -209,12 +209,17 @@ void RunMerger::mergeGeneric(ValueAccessor *first_accessor) {
     std::make_heap(heap.begin(), heap.end(), comp);
 
     std::unique_ptr<Tuple> tuple;
-    std::size_t num_tuples = 0;
+    std::size_t num_tuples = 0, num_skipped = 0;
     while (!heap.empty()) {
       // Pop top tuple in the heap.
       std::pop_heap(heap.begin(), heap.end(), comp);
       GenericHeapNode<ValueAccessorT> current = heap.back();
       heap.pop_back();
+
+	  // Skip first off_ rows
+	  if (++num_skipped <= off_) {
+		continue;
+	  }
 
       tuple.reset(iterators[current.run_id].getValueAccessor()->getTuple());
       output_run_creator_.appendTuple(*tuple);
@@ -251,7 +256,7 @@ void RunMerger::mergeSingleColumnNullFirst(ValueAccessor *first_accessor) {
     PtrVector<RunIterator<ValueAccessorT>, true> iterators;
     std::vector<SingleColumnHeapNode> heap;
     std::unique_ptr<Tuple> tuple;
-    std::size_t num_tuples = 0;
+    std::size_t num_tuples = 0, num_skipped = 0;
 
     // Initialize heap with the first non-NULL sort key tuple.
     for (std::vector<Run>::size_type run_id = 0;
@@ -264,6 +269,10 @@ void RunMerger::mergeSingleColumnNullFirst(ValueAccessor *first_accessor) {
       while (run_it->next()) {
         const void *value = run_it->getValueAccessor()->getUntypedValue(attr_id);
         if (value == nullptr) {
+		  // Skip first off_ rows
+		  if (++num_skipped <= off_) {
+			continue;
+		  }
           // NULL value; insert tuple into output run.
           tuple.reset(run_it->getValueAccessor()->getTuple());
           output_run_creator_.appendTuple(*tuple);
@@ -288,6 +297,10 @@ void RunMerger::mergeSingleColumnNullFirst(ValueAccessor *first_accessor) {
     std::make_heap(heap.begin(), heap.end(), comp);
 
     while (!heap.empty()) {
+	  // Skip first off_ rows
+      if (++num_skipped <= off_) {
+        continue;
+      }
       // Pop the top tuple from heap.
       std::pop_heap(heap.begin(), heap.end(), comp);
       SingleColumnHeapNode current = heap.back();
@@ -353,12 +366,17 @@ void RunMerger::mergeSingleColumnNullLast(ValueAccessor *first_accessor) {
     }
     std::make_heap(heap.begin(), heap.end(), comp);
 
-    std::size_t num_tuples = 0;
+    std::size_t num_tuples = 0, num_skipped = 0;
     while (!heap.empty()) {
       // Pop top tuple from heap.
       std::pop_heap(heap.begin(), heap.end(), comp);
       SingleColumnHeapNode current = heap.back();
       heap.pop_back();
+	  
+	  // Skip first off_ rows
+      if (++num_skipped <= off_) {
+        continue;
+      }
 
       tuple.reset(iterators[current.run_id].getValueAccessor()->getTuple());
       output_run_creator_.appendTuple(*tuple);
@@ -387,6 +405,12 @@ void RunMerger::mergeSingleColumnNullLast(ValueAccessor *first_accessor) {
       // First tuple in all iterators in null_iterators is already
       // next()-checked.
       do {
+
+		// Skip first off_ rows
+		if (++num_skipped <= off_) {
+			continue;
+		}
+
         tuple.reset(run_it->getValueAccessor()->getTuple());
         output_run_creator_.appendTuple(*tuple);
 
@@ -410,10 +434,16 @@ void RunMerger::copyToOutput(const Run &run,
         input_runs_[0], storage_manager_, run_relation_);
 
     std::unique_ptr<Tuple> tuple;
-    std::size_t num_tuples = 0;
+    std::size_t num_tuples = 0, num_skipped = 0;
+
     while (run_it.next()) {
+      if (++num_skipped <= off_) {
+        continue;
+      }
+
       tuple.reset(run_it.getValueAccessor()->getTuple());
       output_run_creator_.appendTuple(*tuple);
+
       if (check_top_k && (++num_tuples == top_k_)) {
         return;
       }

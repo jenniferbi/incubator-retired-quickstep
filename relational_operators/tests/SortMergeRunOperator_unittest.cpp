@@ -577,7 +577,8 @@ class RunMergerTest : public ::testing::Test {
   void mergeRuns(const std::vector<attribute_id> &attrs,
                  vector<bool> &&ordering,
                  vector<bool> &&null_ordering,
-                 const std::size_t top_k = 0) {
+                 const std::size_t top_k = 0,
+				 const std::size_t off = 0) {
     PtrVector<Scalar> order_by;
     for (const attribute_id attr : attrs) {
       order_by.push_back(new ScalarAttribute(*table_->getAttributeById(attr)));
@@ -586,6 +587,7 @@ class RunMergerTest : public ::testing::Test {
     RunMerger merge(sort_config,
                     std::move(input_runs_),
                     top_k,
+					off,
                     *table_,
                     insert_destination_.get(),
                     0,
@@ -1568,7 +1570,8 @@ class SortMergeRunOperatorTest : public ::testing::Test {
                            const std::vector<bool> &ordering,
                            const std::vector<bool> &null_ordering,
                            const std::uint32_t merge_factor,
-                           const std::size_t top_k = 0) {
+                           const std::size_t top_k = 0,
+						   const std::size_t off = 0) {
     const QueryContext::sort_config_id sort_config_index = createSortConfigProto(attrs, ordering, null_ordering);
 
     merge_op_.reset(new SortMergeRunOperator(kQueryId,
@@ -1580,6 +1583,7 @@ class SortMergeRunOperatorTest : public ::testing::Test {
                                              sort_config_index,
                                              merge_factor,
                                              top_k,
+											 off,
                                              true));
 
     merge_op_->setOperatorIndex(kOpIndex);
@@ -1615,7 +1619,8 @@ class SortMergeRunOperatorTest : public ::testing::Test {
                         const std::vector<bool> &null_ordering,
                         const std::uint32_t merge_factor,
                         const std::size_t num_blocks_to_feed_per_iteration,
-                        const std::size_t top_k = 0) {
+                        const std::size_t top_k = 0,
+						const std::size_t off = 0) {
     const QueryContext::sort_config_id sort_config_index = createSortConfigProto(attrs, ordering, null_ordering);
 
     merge_op_.reset(new SortMergeRunOperator(kQueryId,
@@ -1627,6 +1632,7 @@ class SortMergeRunOperatorTest : public ::testing::Test {
                                              sort_config_index,
                                              merge_factor,
                                              top_k,
+											 off,
                                              false));
     merge_op_->setOperatorIndex(kOpIndex);
 
