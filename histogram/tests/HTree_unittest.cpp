@@ -9,16 +9,17 @@ namespace quickstep {
 
 using std::vector;
 
+template <typename T>
 class mock_htree_node {
 public:
-    interval key;
-    vector<mock_htree_node> children;
-    vector<interval> leaf_elements;
+    interval<T> key;
+    vector< mock_htree_node<T> > children;
+    vector< interval<T> > leaf_elements;
 
-    mock_htree_node(interval key, vector<mock_htree_node> children) :
+    mock_htree_node(interval<T> key, vector< mock_htree_node<T> > children) :
         key(key), children(children) {}
 
-    mock_htree_node(interval key, vector<interval> leaf_elements) :
+    mock_htree_node(interval<T> key, vector< interval<T> > leaf_elements) :
         key(key), leaf_elements(leaf_elements) {}
 
     void print(std::ostream &os, unsigned int level=0) {
@@ -29,13 +30,13 @@ public:
         // if leaf
         if (children.size() == 0) {
             os << indent << "{ ";
-            for (interval range : leaf_elements) {
+            for (interval<T> range : leaf_elements) {
                 os << range << ", ";
             }
             os << "}\n";
         } else {
             os << indent << key << " {\n";
-            for (mock_htree_node child : children) {
+            for (mock_htree_node<T> child : children) {
                 child.print(os, level + 1);
             }
             os << indent << "}\n";
@@ -65,21 +66,66 @@ vector< vector<int> > generate_uniform_tuples(
     return tuples;
 }
 
-void test_overlap_calculation(
-    float expected, bucket query, vector<bucket> hits)
+template <typename T>
+class compare {
+
+    int attr_index;
+
+public:
+    compare(int attr_index) : attr_index(attr_index) {}
+
+    bool operator() (vector<T> u, vector<T> v) {
+        return u[attr_index] < v[attr_index];
+    }
+};
+
+template <typename T>
+void sort_tuples(
+    typename vector< vector<T> >::iterator begin,
+    typename vector< vector<T> >::iterator end,
+    vector<int> &num_buckets, int attr_index)
 {
-    vector< shared_ptr<bucket> > ptrs;
-    for (bucket bkt : hits) {
-        shared_ptr<bucket> p = std::make_shared<bucket>(bkt);
+    if (attr_index == num_buckets.size()) return;
+
+    std::sort(begin, end, compare<T>{attr_index});
+    unsigned int bucket_size =
+        std::ceil((float) (end - begin) / num_buckets[attr_index]);
+    typename vector< vector<T> >::iterator range_begin = begin;
+    while (range_begin < end) {
+        typename vector< vector<T> >::iterator range_end =
+            range_begin + bucket_size;
+        if (range_end > end) {
+            range_end = end;
+        }
+        sort_tuples<T>(range_begin, range_end, num_buckets, attr_index + 1);
+        range_begin = range_end;
+    }
+}
+
+template <typename T>
+void sort_tuples(vector< vector<T> > &tuples, vector<int> &num_buckets) {
+    sort_tuples<T>(tuples.begin(), tuples.end(), num_buckets, 0);
+}
+
+template <typename T>
+void test_overlap_calculation(
+    float expected, bucket<T> query, vector< bucket<T> > hits)
+{
+    vector< shared_ptr< bucket<T> > > ptrs;
+    for (bucket<T> bkt : hits) {
+        shared_ptr< bucket<T> > p = std::make_shared< bucket<T> >(bkt);
         ptrs.push_back(p);
     }
     EXPECT_EQ(expected, buckets_overlapped(ptrs, query));
 }
 
+template <typename T>
 void search_test(
-    shared_ptr<htree_node> tree, bucket query, vector<bucket> expected_hits)
+    shared_ptr< htree_node<T> > tree,
+    bucket<T> query,
+    vector< bucket<T> > expected_hits)
 {
-    vector< shared_ptr<bucket> > hits = tree->search(query);
+    vector< shared_ptr< bucket<T> > > hits = tree->search(query);
     EXPECT_TRUE(hits.size() == expected_hits.size());
     for (auto bkt : hits) {
         auto it = std::find(expected_hits.begin(), expected_hits.end(), *bkt);
@@ -87,13 +133,15 @@ void search_test(
     }
 }
 
+template <typename T>
 void construction_test(
-    vector< vector<int> > tuples, vector<int> num_buckets,
-    vector<mock_htree_node> expected_tree)
+    vector< vector<T> > tuples, vector<int> num_buckets,
+    vector< mock_htree_node<T> > expected_tree)
 {
     std::ostringstream result_stream;
     std::ostringstream expected_stream;
 
+    sort_tuples(tuples, num_buckets);
     auto htree = construct_htree(tuples, num_buckets);
     htree->print(result_stream);
 
@@ -113,7 +161,7 @@ void construction_test(
 
 TEST(HTreeTest, HTreeTest_Overlap_Basic) {
     test_overlap_calculation(3.0,
-        { { {0, 1}, {0, 1}, {false, -1, false, -1} } },
+        bucket<int>{ { {0, 1}, {0, 1}, {false, -1, false, -1} } },
         {
             { { {0, 0}, {0, 0}, {0, 0} } },
             { { {0, 0}, {1, 1}, {3, 3} } },
@@ -124,7 +172,7 @@ TEST(HTreeTest, HTreeTest_Overlap_Basic) {
 
 TEST(HTreeTest, HTreeTest_Overlap_Partial) {
     test_overlap_calculation(1.75,
-        { { {0, 1}, {0, 1}, {false, -1, false, -1} } },
+        bucket<int>{ { {0, 1}, {0, 1}, {false, -1, false, -1} } },
         {
             { { {-1, 0}, {0, 0}, {0, 0} } }, // overlap = .5
             { { {-1, 0}, {1, 2}, {3, 3} } }, // overlap = .25
@@ -254,74 +302,74 @@ TEST(HTreeTest, HTreeTest_Suboptimal_Partition_Construction) {
     construction_test(tuples, { 3, 2, 3 },
         {
             { {0, 1}, {
-                { {0, 1}, {
-                    { {0, 1},
-                        { {0, 1}, {0, 1}, {0, 1} }
+                { {0, 0}, {
+                    { {0, 0},
+                        { {0, 1}, {0, 0}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {0, 1}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {0, 1}, {0, 0}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {0, 1}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {0, 1}, {0, 0}, {2, 2} }
                     },
                 } },
-                { {0, 1}, {
-                    { {0, 1},
-                        { {0, 1}, {0, 1}, {0, 1} }
+                { {1, 1}, {
+                    { {0, 0},
+                        { {0, 1}, {1, 1}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {0, 1}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {0, 1}, {1, 1}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {0, 1}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {0, 1}, {1, 1}, {2, 2} }
                     },
                 } },
             } },
             { {2, 3}, {
-                { {0, 1}, {
-                    { {0, 1},
-                        { {2, 3}, {0, 1}, {0, 1} }
+                { {0, 0}, {
+                    { {0, 0},
+                        { {2, 3}, {0, 0}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {2, 3}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {2, 3}, {0, 0}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {2, 3}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {2, 3}, {0, 0}, {2, 2} }
                     },
                 } },
-                { {0, 1}, {
-                    { {0, 1},
-                        { {2, 3}, {0, 1}, {0, 1} }
+                { {1, 1}, {
+                    { {0, 0},
+                        { {2, 3}, {1, 1}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {2, 3}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {2, 3}, {1, 1}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {2, 3}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {2, 3}, {1, 1}, {2, 2} }
                     },
                 } },
             } },
             { {4, 5}, {
-                { {0, 1}, {
-                    { {0, 1},
-                        { {4, 5}, {0, 1}, {0, 1} }
+                { {0, 0}, {
+                    { {0, 0},
+                        { {4, 5}, {0, 0}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {4, 5}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {4, 5}, {0, 0}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {4, 5}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {4, 5}, {0, 0}, {2, 2} }
                     },
                 } },
-                { {0, 1}, {
-                    { {0, 1},
-                        { {4, 5}, {0, 1}, {0, 1} }
+                { {1, 1}, {
+                    { {0, 0},
+                        { {4, 5}, {1, 1}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {4, 5}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {4, 5}, {1, 1}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {4, 5}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {4, 5}, {1, 1}, {2, 2} }
                     },
                 } },
             } },
