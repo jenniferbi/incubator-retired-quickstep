@@ -123,45 +123,17 @@ inline std::vector<std::vector<TypedValue> > ExecuteQueryForMultipleRows(
     std::vector<block_id> blocks = query_result_relation->getBlocksSnapshot();
 	for (const block_id &id : blocks) {
     BlockReference block = storage_manager->getBlock(id, *query_result_relation);
-	/* // Iterate through blocks
-    BlockReference block;
-	for (auto block : blocks) {
-    	block = storage_manager->getBlock(block, *query_result_relation);
-	*/
 	accessor.reset(block->getTupleStorageSubBlock().createValueAccessor());
-    //const TupleStorageSubBlock &tuple_store = block->getTupleStorageSubBlock();
-
-    //const tuple_id num_rows = tuple_store.numTuples();
-    //const std::size_t num_columns = tuple_store.getRelation().size();
-	//std::unique_ptr<CatalogRelation> table = tuple_store.getRelation();
-	//CatalogRelation::const_iterator attr_it = query_result_relation->begin();
 	InvokeOnValueAccessorNotAdapter(
 		accessor.get(),
 		[&](auto *accessor) -> void {
-       while (accessor->next()) {
-		 //for (; attr_it != query_result_relation->end(); ++attr_it) {
-			values.push_back(accessor->getTuple()->getAttributeValueVector());
-		 //}
-		 //values.push_back(value);
+      	while (accessor->next()) {
+		  values.push_back(accessor->getTuple()->getAttributeValueVector());
 		}
 	});// end accessor
 	} // end blocks
-	/*
-    if (tuple_store.isPacked()) {
-      for (std::size_t i = 0; i < num_columns; ++i) {
-        values.emplace_back(tuple_store.getAttributeValueTyped(0, i));
-        values[i].ensureNotReference();
-      }
-    } else {
-      std::unique_ptr<TupleIdSequence> existence_map(tuple_store.getExistenceMap());
-	  for (auto row : existence_map) {
-		  for (std::size_t i = 0; i < num_columns; ++i) {
-			values.emplace_back(
-				tuple_store.getAttributeValueTyped(*row, i));
-			values[i].ensureNotReference();
-      	  }
-	  }
-    }*/
+		// maybe should call this to be safe
+  		// values[i].ensureNotReference();
   }
 
   // Drop the result relation.
@@ -313,12 +285,14 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
     const std::string rel_name = EscapeQuotes(relation.getName(), '"');
 
 	std::vector<std::string> *attributes = new std::vector<std::string>();
+	std::vector<TypeID> *attr_types = new std::vector<TypeID>();
     for (const CatalogAttribute &attribute : relation) {
       	std::string attr_name = EscapeQuotes(attribute.getName(), '"');
       	const TypeID attr_type = attribute.getType().getTypeID();
 		if (attr_type == kInt || attr_type ==  kLong || attr_type == kFloat ||
 			attr_type == kDouble) {
 			attributes->emplace_back(attr_name);
+			attr_types->emplace_back(attr_type);
 		}
 	}
     /* Get the number of distinct values for each column.
@@ -326,9 +300,10 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
       bool is_min_applicable =
           AggregateFunctionMin::Instance().canApplyToTypes({&attr_type});
       bool is_max_applicable =
-          AggregateFunctionMax::Instance().canApplyToTypes({&attr_type});
+          AggregateFunctionMax::Instance().canApplyToTypes({&attr_type});*/
+
+    std::string query_string = "SELECT * FROM ( SELECT * FROM \"";
 	for (int i = 1; i < 2; i++){
-      std::string query_string = "SELECT * FROM ( SELECT * FROM \"";
       query_string.append(rel_name);
       query_string.append("\" ORDER BY ");
       query_string.append((*attributes)[0]);
@@ -341,12 +316,12 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
       query_string.append(") AS tmp ORDER BY ");
       query_string.append((*attributes)[1]);
       query_string.append(" ASC;");
-	*/
+	
       std::string query_string = "SELECT * FROM \"";
       query_string.append(rel_name);
       query_string.append("\" ORDER BY ");
       query_string.append((*attributes)[0]);
-	   
+	}   
   	  DLOG(INFO) << "jennifer query: " << query_string;
 
       std::vector< std::vector<TypedValue>> results =
@@ -357,13 +332,13 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
                                    storage_manager,
                                    query_processor,
                                    parser_wrapper.get());
-      //auto results_it = results.begin();
 	  for (auto r : results) {
 	  	for (auto vec : r) {
-		//fprintf(out, " ");
-		std::cout << vec.getLiteral<int>();
+			
+			fprintf(out, "%d ", vec.getLiteral<int>());
+			//std::cout << vec.getLiteral<int>();
 		}
-		//fprintf(out, "\n");
+		fprintf(out, "\n");
 	  }
 
     fprintf(out, "done\n");
