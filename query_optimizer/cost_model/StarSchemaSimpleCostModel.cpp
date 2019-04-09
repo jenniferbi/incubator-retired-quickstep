@@ -450,12 +450,45 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
             if (comparison_expression->isEqualityComparisonPredicate()) {
               return 1.0 / std::max(child_num_distinct_values, static_cast<std::size_t>(1u));
             } else {
-              return 1.0 / std::max(std::min(child_num_distinct_values / 100.0, 10.0), 2.0);
+              // Instead of returning the naive number, use histogram to estimate range selectivity
+              // est_selectivity = 1/NumBuckets(Num of overlapped buckets) 
+              const ComparisonID comparison_type = comparison_expression->comparison().getComparisonId();
+              ExprId attr_id;
+              TypedValue typed_value;
+              double literal_value;
+
+              if (E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->left(), &attr) &&
+                 E::SomeScalarLiteral::Matches(comparison_expression->right())) {
+                attr_id = attr->id();
+                typed_value = std::static_pointer_cast<E::ScalarLiteralPtr>(comparison_expression->right())->value();
+              }
+              else {
+                E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->right(), &attr);
+                attr_id = attr->id();
+                typed_value = std::static_pointer_cast<E::ScalarLiteralPtr>(comparison_expression->left())->value();
+              }
+              switch (typed_value.getTypeID()) {
+                // Now we cast all literal values to double because htree takes intervals in doubles
+                // We consider making htree generic
+                case kInt:
+                  literal_value = std::static_cast<double>(typed_value.getLiteral<int>());
+                case kLong:
+                  literal_value = std::static_cast<double>(typed_value.getLiteral<std::int64>());
+                case kFloat:
+                  literal_value = std::static_cast<double>(typed_value.getLiteral<float>());
+                case kDouble:
+                  literal_value = typed_value.getLiteral<double>();
+                default:
+                  FATAL_ERROR("TypedValue does not appear to be numeric");
+              }
+              // return 1.0 / std::max(std::min(child_num_distinct_values / 100.0, 10.0), 2.0);
             }
           }
         }
+        // Cases where predicate attribute not present in child node attributes
         return 0.1;
       }
+      // In cases such as City.cid = Weather.cid
       return 0.5;
     }
     case E::ExpressionType::kLogicalAnd: {
