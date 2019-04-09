@@ -65,6 +65,43 @@ vector< vector<int> > generate_uniform_tuples(
     return tuples;
 }
 
+class compare {
+
+    int attr_index;
+
+public:
+    compare(int attr_index) : attr_index(attr_index) {}
+
+    bool operator() (vector<int> u, vector<int> v) {
+        return u[attr_index] < v[attr_index];
+    }
+};
+
+void sort_tuples(
+    vector< vector<int> >::iterator begin,
+    vector< vector<int> >::iterator end,
+    vector<int> &num_buckets, int attr_index)
+{
+    if (attr_index == num_buckets.size()) return;
+
+    std::sort(begin, end, compare{attr_index});
+    unsigned int bucket_size =
+        std::ceil((float) (end - begin) / num_buckets[attr_index]);
+    vector< vector<int> >::iterator range_begin = begin;
+    while (range_begin < end) {
+        vector< vector<int> >::iterator range_end = range_begin + bucket_size;
+        if (range_end > end) {
+            range_end = end;
+        }
+        sort_tuples(range_begin, range_end, num_buckets, attr_index + 1);
+        range_begin = range_end;
+    }
+}
+
+void sort_tuples(vector< vector<int> > &tuples, vector<int> &num_buckets) {
+    sort_tuples(tuples.begin(), tuples.end(), num_buckets, 0);
+}
+
 void test_overlap_calculation(
     float expected, bucket query, vector<bucket> hits)
 {
@@ -94,6 +131,7 @@ void construction_test(
     std::ostringstream result_stream;
     std::ostringstream expected_stream;
 
+    sort_tuples(tuples, num_buckets);
     auto htree = construct_htree(tuples, num_buckets);
     htree->print(result_stream);
 
@@ -254,74 +292,74 @@ TEST(HTreeTest, HTreeTest_Suboptimal_Partition_Construction) {
     construction_test(tuples, { 3, 2, 3 },
         {
             { {0, 1}, {
-                { {0, 1}, {
-                    { {0, 1},
-                        { {0, 1}, {0, 1}, {0, 1} }
+                { {0, 0}, {
+                    { {0, 0},
+                        { {0, 1}, {0, 0}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {0, 1}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {0, 1}, {0, 0}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {0, 1}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {0, 1}, {0, 0}, {2, 2} }
                     },
                 } },
-                { {0, 1}, {
-                    { {0, 1},
-                        { {0, 1}, {0, 1}, {0, 1} }
+                { {1, 1}, {
+                    { {0, 0},
+                        { {0, 1}, {1, 1}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {0, 1}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {0, 1}, {1, 1}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {0, 1}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {0, 1}, {1, 1}, {2, 2} }
                     },
                 } },
             } },
             { {2, 3}, {
-                { {0, 1}, {
-                    { {0, 1},
-                        { {2, 3}, {0, 1}, {0, 1} }
+                { {0, 0}, {
+                    { {0, 0},
+                        { {2, 3}, {0, 0}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {2, 3}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {2, 3}, {0, 0}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {2, 3}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {2, 3}, {0, 0}, {2, 2} }
                     },
                 } },
-                { {0, 1}, {
-                    { {0, 1},
-                        { {2, 3}, {0, 1}, {0, 1} }
+                { {1, 1}, {
+                    { {0, 0},
+                        { {2, 3}, {1, 1}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {2, 3}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {2, 3}, {1, 1}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {2, 3}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {2, 3}, {1, 1}, {2, 2} }
                     },
                 } },
             } },
             { {4, 5}, {
-                { {0, 1}, {
-                    { {0, 1},
-                        { {4, 5}, {0, 1}, {0, 1} }
+                { {0, 0}, {
+                    { {0, 0},
+                        { {4, 5}, {0, 0}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {4, 5}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {4, 5}, {0, 0}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {4, 5}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {4, 5}, {0, 0}, {2, 2} }
                     },
                 } },
-                { {0, 1}, {
-                    { {0, 1},
-                        { {4, 5}, {0, 1}, {0, 1} }
+                { {1, 1}, {
+                    { {0, 0},
+                        { {4, 5}, {1, 1}, {0, 0} }
                     },
-                    { {0, 2},
-                        { {4, 5}, {0, 1}, {0, 2} }
+                    { {1, 1},
+                        { {4, 5}, {1, 1}, {1, 1} }
                     },
-                    { {1, 2},
-                        { {4, 5}, {0, 1}, {1, 2} }
+                    { {2, 2},
+                        { {4, 5}, {1, 1}, {2, 2} }
                     },
                 } },
             } },
