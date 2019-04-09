@@ -26,6 +26,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <sstream>
 
 #include "catalog/CatalogAttribute.hpp"
 #include "catalog/CatalogDatabase.hpp"
@@ -66,12 +67,119 @@ using std::fputs;
 using std::size_t;
 using std::string;
 using std::vector;
+using std::ostringstream;
 
 namespace tmb { class MessageBus; }
 
 namespace quickstep {
 namespace cli {
 namespace {
+
+/**
+ * @brief A helper function that executes a SQL query to obtain a row of results.
+ */
+inline std::vector<std::vector<TypedValue> > ExecuteQueryForMultipleRows(
+    const tmb::client_id main_thread_client_id,
+    const tmb::client_id foreman_client_id,
+    const std::string &query_string,
+    tmb::MessageBus *bus,
+    StorageManager *storage_manager,
+    QueryProcessor *query_processor,
+    SqlParserWrapper *parser_wrapper) {
+  parser_wrapper->feedNextBuffer(new std::string(query_string));
+
+  ParseResult result = parser_wrapper->getNextStatement();
+  DCHECK_EQ(ParseResult::kSuccess, result.condition);
+
+  const ParseStatement &statement = *result.parsed_statement;
+  const CatalogRelation *query_result_relation = nullptr;
+  std::chrono::time_point<std::chrono::steady_clock> start, end;
+
+  {
+    // Generate the query plan.
+    auto query_handle =
+        std::make_unique<QueryHandle>(query_processor->query_id(),
+                                      main_thread_client_id,
+                                      statement.getPriority());
+    query_processor->generateQueryHandle(statement, query_handle.get());
+    DCHECK(query_handle->getQueryPlanMutable() != nullptr);
+    query_result_relation = query_handle->getQueryResultRelation();
+    DCHECK(query_result_relation != nullptr);
+	
+    start = std::chrono::steady_clock::now();
+
+    // Use foreman to execute the query plan.
+    QueryExecutionUtil::ConstructAndSendAdmitRequestMessage(
+        main_thread_client_id, foreman_client_id, query_handle.release(), bus);
+  }
+
+  QueryExecutionUtil::ReceiveQueryCompletionMessage(main_thread_client_id, bus);
+  end = std::chrono::steady_clock::now();
+  std::unique_ptr<ValueAccessor> accessor;
+
+  // Retrieve the scalar result from the result relation.
+  std::vector<std::vector<TypedValue> > values;
+  {
+    std::vector<block_id> blocks = query_result_relation->getBlocksSnapshot();
+	for (const block_id &id : blocks) {
+    BlockReference block = storage_manager->getBlock(id, *query_result_relation);
+	/* // Iterate through blocks
+    BlockReference block;
+	for (auto block : blocks) {
+    	block = storage_manager->getBlock(block, *query_result_relation);
+	*/
+	accessor.reset(block->getTupleStorageSubBlock().createValueAccessor());
+    //const TupleStorageSubBlock &tuple_store = block->getTupleStorageSubBlock();
+
+    //const tuple_id num_rows = tuple_store.numTuples();
+    //const std::size_t num_columns = tuple_store.getRelation().size();
+	//std::unique_ptr<CatalogRelation> table = tuple_store.getRelation();
+	//CatalogRelation::const_iterator attr_it = query_result_relation->begin();
+	InvokeOnValueAccessorNotAdapter(
+		accessor.get(),
+		[&](auto *accessor) -> void {
+       while (accessor->next()) {
+		 //for (; attr_it != query_result_relation->end(); ++attr_it) {
+			values.push_back(accessor->getTuple()->getAttributeValueVector());
+		 //}
+		 //values.push_back(value);
+		}
+	});// end accessor
+	} // end blocks
+	/*
+    if (tuple_store.isPacked()) {
+      for (std::size_t i = 0; i < num_columns; ++i) {
+        values.emplace_back(tuple_store.getAttributeValueTyped(0, i));
+        values[i].ensureNotReference();
+      }
+    } else {
+      std::unique_ptr<TupleIdSequence> existence_map(tuple_store.getExistenceMap());
+	  for (auto row : existence_map) {
+		  for (std::size_t i = 0; i < num_columns; ++i) {
+			values.emplace_back(
+				tuple_store.getAttributeValueTyped(*row, i));
+			values[i].ensureNotReference();
+      	  }
+	  }
+    }*/
+  }
+
+  // Drop the result relation.
+  DropRelation::Drop(*query_result_relation,
+                     query_processor->getDefaultDatabase(),
+                     storage_manager);
+	// display time
+	/*
+  if (quickstep::FLAGS_display_timing) {
+	std::chrono::duration<double, std::milli> time_ms = end - start;
+	fprintf(, "Time: %s ms\n",
+		   quickstep::DoubleToStringWithSignificantDigits(
+			   time_ms.count(), 3).c_str());
+  }*/
+
+  return values;
+}
+
 
 /**
  * @brief A helper function that executes a SQL query to obtain a row of results.
@@ -193,9 +301,9 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
 
   std::vector<QueryHandle*> query_handles;
   // bucket sizes 
-  const std::size_t bucket_1 = 2; //, bucket_2 = 3;
+  //const std::size_t bucket_1 = 2; //, bucket_2 = 3;
   //const std::size_t num_buckets = bucket_1 * bucket_2;
-  const std::size_t N = 2;//should be number of tuples.
+  //const std::size_t N = 2;//should be number of tuples.
 
   // Analyze each relation in the database.
   for (const CatalogRelation &relation : relations) {
@@ -207,7 +315,11 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
 	std::vector<std::string> *attributes = new std::vector<std::string>();
     for (const CatalogAttribute &attribute : relation) {
       	std::string attr_name = EscapeQuotes(attribute.getName(), '"');
-		attributes->emplace_back(attr_name);
+      	const TypeID attr_type = attribute.getType().getTypeID();
+		if (attr_type == kInt || attr_type ==  kLong || attr_type == kFloat ||
+			attr_type == kDouble) {
+			attributes->emplace_back(attr_name);
+		}
 	}
     /* Get the number of distinct values for each column.
       const Type &attr_type = attribute.getType();
@@ -215,7 +327,6 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
           AggregateFunctionMin::Instance().canApplyToTypes({&attr_type});
       bool is_max_applicable =
           AggregateFunctionMax::Instance().canApplyToTypes({&attr_type});
-	*/
 	for (int i = 1; i < 2; i++){
       std::string query_string = "SELECT * FROM ( SELECT * FROM \"";
       query_string.append(rel_name);
@@ -230,21 +341,29 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
       query_string.append(") AS tmp ORDER BY ");
       query_string.append((*attributes)[1]);
       query_string.append(" ASC;");
-
+	*/
+      std::string query_string = "SELECT * FROM \"";
+      query_string.append(rel_name);
+      query_string.append("\" ORDER BY ");
+      query_string.append((*attributes)[0]);
 	   
   	  DLOG(INFO) << "jennifer query: " << query_string;
 
-      std::vector<TypedValue> results =
-          ExecuteQueryForSingleRow(main_thread_client_id,
+      std::vector< std::vector<TypedValue>> results =
+          ExecuteQueryForMultipleRows(main_thread_client_id,
                                    foreman_client_id,
                                    query_string,
                                    bus,
                                    storage_manager,
                                    query_processor,
                                    parser_wrapper.get());
-
-      auto results_it = results.begin();
-      DCHECK_EQ(TypeID::kLong, results_it->getTypeID());
+      //auto results_it = results.begin();
+	  for (auto r : results) {
+	  	for (auto vec : r) {
+		//fprintf(out, " ");
+		std::cout << vec.getLiteral<int>();
+		}
+		//fprintf(out, "\n");
 	  }
 
     fprintf(out, "done\n");
