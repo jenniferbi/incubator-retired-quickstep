@@ -37,3 +37,10 @@ target_link_libraries(htree_test
 					  gtest_main
 					  quickstep_histogram_HTree)
 add_test(htree_test htree_test)
+add_executable(hyped_value_test "${CMAKE_CURRENT_SOURCE_DIR}/tests/HypedValue_unittest.cpp")
+target_link_libraries(hyped_value_test
+					  glog
+					  gtest
+					  gtest_main
+					  quickstep_histogram_HTree)
+add_test(hyped_value hyped_value)

@@ -8,6 +8,9 @@
 #include <memory>
 #include <vector>
 
+#include "types/TypedValue.hpp"
+#include "types/TypeID.hpp"
+
 /*  _   _     _____
  * | | | |   |_   _| __ ___  ___
  * | |_| |_____| || '__/ _ \/ _ \
@@ -23,6 +26,8 @@ using std::vector;
 using std::shared_ptr;
 using std::make_shared;
 
+class HypedValue; // wrapper for TypedValue, used in the entries of the H-Tree.
+
 /*
  * An htree_node contains a vector of htree_elements. An htree_element contains
  * a key, which is an interval. Leaf elements will contain the entire bucket,
@@ -34,14 +39,14 @@ template <typename T> class htree_element;
 template <typename T> class htree_node;
 
 template <typename T>
-float overlap_proportion(
+double overlap_proportion(
     const interval<T> &h_interval, const interval<T> &query_interval);
 
 template <typename T>
-float overlap_proportion(const bucket<T> &h_bkt, const bucket<T> &query_bkt);
+double overlap_proportion(const bucket<T> &h_bkt, const bucket<T> &query_bkt);
 
 template <typename T>
-float buckets_overlapped(
+double buckets_overlapped(
     const vector< shared_ptr< bucket<T> > > &h_bkts,
     const bucket<T> &query_bkt);
 
@@ -75,6 +80,197 @@ interval<T> get_attr_interval(
     typename vector< vector<T> >::iterator end,
     unsigned int attr_index);
 
+
+
+/*  _   _                      ___     __    _
+ * | | | |_   _ _ __   ___  __| \ \   / /_ _| |_   _  ___
+ * | |_| | | | | '_ \ / _ \/ _` |\ \ / / _` | | | | |/ _ \
+ * |  _  | |_| | |_) |  __/ (_| | \ V / (_| | | |_| |  __/
+ * |_| |_|\__, | .__/ \___|\__,_|  \_/ \__,_|_|\__,_|\___|
+ *        |___/|_|
+ *  FIGLET: HypedValue
+ *
+ *  A wrapper for the TypedValue class with comparison/arithmetic operators.
+ */
+class HypedValue {
+    TypedValue v;
+
+public:
+    HypedValue(TypedValue v) : v(v) {}
+
+    HypedValue(const HypedValue &h) : v(h.v) {}
+
+    friend bool operator==(const HypedValue &h1, const HypedValue &h2);
+    friend bool operator!=(const HypedValue &h1, const HypedValue &h2);
+    friend bool operator<(const HypedValue &h1, const HypedValue &h2);
+    friend bool operator<=(const HypedValue &h1, const HypedValue &h2);
+    friend bool operator>(const HypedValue &h1, const HypedValue &h2);
+    friend bool operator>=(const HypedValue &h1, const HypedValue &h2);
+    /* shouldn't need this.
+    friend double operator+(const HypedValue &h1, const HypedValue &h2);
+    friend double operator-(const HypedValue &h1, const HypedValue &h2);
+    */
+    friend double width(const HypedValue &h1, const HypedValue &h2);
+    friend std::ostream& operator<<(std::ostream &os, const HypedValue &h2);
+
+};
+
+bool operator==(const HypedValue &h1, const HypedValue &h2) {
+    TypedValue v1 = h1.v;
+    TypedValue v2 = h2.v;
+    TypeID t = v1.getTypeID();
+    assert(t == v2.getTypeID());
+    switch(t) {
+      case kInt:
+        return v1.getLiteral<int>() == v2.getLiteral<int>();
+      case kLong:
+        return v1.getLiteral<std::int64_t>() == v2.getLiteral<std::int64_t>();
+      case kFloat:
+        return v1.getLiteral<float>() == v2.getLiteral<float>();
+      case kDouble:
+        return v1.getLiteral<double>() == v2.getLiteral<double>();
+      case kDate:
+        return v1.getLiteral<DateLit>() == v2.getLiteral<DateLit>();
+      case kDatetime:
+        return v1.getLiteral<DatetimeLit>() == v2.getLiteral<DatetimeLit>();
+      case kDatetimeInterval:
+        return v1.getLiteral<DatetimeIntervalLit>() ==
+            v2.getLiteral<DatetimeIntervalLit>();
+      case kYearMonthInterval:
+        return v1.getLiteral<YearMonthIntervalLit>() ==
+            v2.getLiteral<YearMonthIntervalLit>();
+      default:
+        return false; // unimplemented
+    }
+}
+
+bool operator!=(const HypedValue &h1, const HypedValue &h2) {
+    return !(h1 == h2);
+}
+
+bool operator<(const HypedValue &h1, const HypedValue &h2) {
+    TypedValue v1 = h1.v;
+    TypedValue v2 = h2.v;
+    TypeID t = v1.getTypeID();
+    assert(t == v2.getTypeID());
+    switch(t) {
+      case kInt:
+        return v1.getLiteral<int>() < v2.getLiteral<int>();
+      case kLong:
+        return v1.getLiteral<std::int64_t>() < v2.getLiteral<std::int64_t>();
+      case kFloat:
+        return v1.getLiteral<float>() < v2.getLiteral<float>();
+      case kDouble:
+        return v1.getLiteral<double>() < v2.getLiteral<double>();
+      case kDate:
+        return v1.getLiteral<DateLit>() < v2.getLiteral<DateLit>();
+      case kDatetime:
+        return v1.getLiteral<DatetimeLit>() < v2.getLiteral<DatetimeLit>();
+      case kDatetimeInterval:
+        return v1.getLiteral<DatetimeIntervalLit>() <
+            v2.getLiteral<DatetimeIntervalLit>();
+      case kYearMonthInterval:
+        return v1.getLiteral<YearMonthIntervalLit>() <
+            v2.getLiteral<YearMonthIntervalLit>();
+      default:
+        return false; // unimplemented
+    }
+}
+
+bool operator<=(const HypedValue &h1, const HypedValue &h2) {
+    return h1 < h2 || h1 == h2;
+}
+
+bool operator>(const HypedValue &h1, const HypedValue &h2) {
+    return !(h1 <= h2);
+}
+
+bool operator>=(const HypedValue &h1, const HypedValue &h2) {
+    return h1 > h2 || h1 == h2;
+}
+
+/* Shouldn't need this.
+double operator+(const HypedValue &h1, const HypedValue &h2) {
+    TypedValue v1 = h1.v;
+    TypedValue v2 = h2.v;
+    TypeID t = v1.getTypeID();
+    assert(t == v2.getTypeID());
+    switch(t) {
+      case kInt:
+        return v1.getLiteral<int>() + v2.getLiteral<int>();
+      case kFloat:
+        return v1.getLiteral<float>() + v2.getLiteral<float>();
+      case kLong:
+        return v1.getLiteral<std::int64_t>() + v2.getLiteral<std::int64_t>();
+      case kDouble:
+        return v1.getLiteral<double>() + v2.getLiteral<double>();
+      default:
+        return 0.0; // unimplemented
+    }
+}
+
+double operator-(const HypedValue &h1, const HypedValue &h2) {
+    TypedValue v1 = h1.v;
+    TypedValue v2 = h2.v;
+    TypeID t = v1.getTypeID();
+    assert(t == v2.getTypeID());
+    switch(t) {
+      case kInt:
+        return v1.getLiteral<int>() - v2.getLiteral<int>();
+      case kFloat:
+        return v1.getLiteral<float>() - v2.getLiteral<float>();
+      case kLong:
+        return v1.getLiteral<std::int64_t>() - v2.getLiteral<std::int64_t>();
+      case kDouble:
+        return v1.getLiteral<double>() - v2.getLiteral<double>();
+      default:
+        return 0.0; // unimplemented
+    }
+}
+*/
+
+double width(const HypedValue &h1, const HypedValue &h2) {
+    if (h1 > h2) {
+        return 0.0;
+    }
+    TypedValue v1 = h1.v;
+    TypedValue v2 = h2.v;
+    TypeID t = v1.getTypeID();
+    assert(t == v2.getTypeID());
+    // For integer values, the interval [x,y] contains y-x+1 points.
+    switch(t) {
+        case kInt:
+            return v2.getLiteral<int>() - v1.getLiteral<int>() + 1;
+        case kLong:
+            return v2.getLiteral<std::int64_t>() -
+                v1.getLiteral<std::int64_t>() + 1;
+        case kFloat:
+            return v2.getLiteral<float>() - v1.getLiteral<float>();
+        case kDouble:
+            assert(1 == 0);
+            return v2.getLiteral<double>() - v1.getLiteral<double>();
+        default:
+            return 0.0; // unimplemented
+    }
+}
+
+std::ostream& operator<<(std::ostream &os, const HypedValue &h) {
+    os << "HypedValue{";
+    switch(h.v.getTypeID()) {
+        case kInt:
+            os << h.v.getLiteral<int>();
+        case kLong:
+            os << h.v.getLiteral<std::int64_t>();
+        case kFloat:
+            os << h.v.getLiteral<float>();
+        case kDouble:
+            os << h.v.getLiteral<double>();
+        default: // unimplemented
+            break;
+    }
+    os << "}";
+    return os;
+}
 
 /*  _                _        _
  * | |__  _   _  ___| | _____| |_ ___
@@ -175,7 +371,7 @@ double width(double x, double y) {
 
 // Calculate the proportion |this union query_interval| / |this|.
 template <typename T>
-float overlap_proportion(
+double overlap_proportion(
     const interval<T> &h_interval, const interval<T> &query_interval)
 {
     // h_interval should be an interval in an htree, which should not be
@@ -191,17 +387,22 @@ float overlap_proportion(
         right_bound = std::min(h_interval.max, query_interval.max);
     }
     // No overlap
-    if (right_bound - left_bound < 0) {
+    if (left_bound > right_bound) {
         return 0.0;
     }
-    return (float) width(left_bound, right_bound) /
+    // The bucket only includes one value, and that value is contained in the
+    // query range.
+    if (h_interval.min == h_interval.max) {
+        return 1.0;
+    }
+    return (double) width(left_bound, right_bound) /
         width(h_interval.min, h_interval.max);
 }
 
 // Calculate the proportion |h_bkt union query_bkt| / |h_bkt|.
 template <typename T>
-float overlap_proportion(const bucket<T> &h_bkt, const bucket<T> &query_bkt) {
-    float ratio = 1.0;
+double overlap_proportion(const bucket<T> &h_bkt, const bucket<T> &query_bkt) {
+    double ratio = 1.0;
     for (int i = 0; i < h_bkt.size(); i++) {
         ratio *= overlap_proportion(h_bkt[i], query_bkt[i]);
     }
@@ -212,10 +413,10 @@ float overlap_proportion(const bucket<T> &h_bkt, const bucket<T> &query_bkt) {
 // (including partial buckets) that overlap with the query range, assuming a
 // uniform distribution within each bucket.
 template <typename T>
-float buckets_overlapped(
+double buckets_overlapped(
     const vector< shared_ptr< bucket<T> > > &h_bkts, const bucket<T> &query_bkt)
 {
-    float sum = 0.0;
+    double sum = 0.0;
     for (int i = 0; i < h_bkts.size(); i++) {
         sum += overlap_proportion(*h_bkts[i], query_bkt);
     }
@@ -257,7 +458,7 @@ public:
         return bkt;
     }
 
-    bool contains(int val) const {
+    bool contains(T val) const {
         return key.contains(val);
     }
 
@@ -287,10 +488,10 @@ private:
     find_min_overlapping(interval<T> bounds) {
         assert(elements.size() > 0); // no node should be empty
         auto begin = elements.begin();
-        int left_bound = bounds.min;
+        T left_bound = bounds.min;
         // If left_bound <= first interval, simply return the first.
-        if (bounds.has_min && begin->get_key().min < left_bound) {
-            while(!begin->contains(left_bound)) {
+        if (bounds.has_min) {
+            while(begin->get_key().max < left_bound) {
                 begin++;
             }
         }
@@ -301,10 +502,10 @@ private:
     find_max_overlapping(interval<T> bounds) {
         assert(elements.size() > 0); // no node should be empty
         auto end = elements.end() - 1;
-        int right_bound = bounds.max;
+        T right_bound = bounds.max;
         // If right_bound >= last interval, simply return the last.
-        if (bounds.has_max && right_bound < end->get_key().max) {
-            while(!end->contains(right_bound)) {
+        if (bounds.has_max) {
+            while(right_bound < end->get_key().min) {
                 end--;
             }
         }
@@ -369,7 +570,7 @@ public:
         return results;
     }
 
-    float estimateSelectivity(const bucket<T> &query_bkt) {
+    double estimateSelectivity(const bucket<T> &query_bkt) {
         return buckets_overlapped(search(query_bkt), query_bkt);
     }
 
@@ -505,7 +706,7 @@ T get_min_attr_value(
     unsigned int attr_index)
 {
     assert(begin < end);
-    int min = (*begin)[attr_index];
+    T min = (*begin)[attr_index];
     while (++begin < end) {
         min = std::min(min, (*begin)[attr_index]);
     }
@@ -520,7 +721,7 @@ T get_max_attr_value(
     unsigned int attr_index)
 {
     assert(begin < end);
-    int max = (*begin)[attr_index];
+    T max = (*begin)[attr_index];
     while (++begin < end) {
         max = std::max(max, (*begin)[attr_index]);
     }
