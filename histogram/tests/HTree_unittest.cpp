@@ -67,6 +67,20 @@ vector< vector<int> > generate_uniform_tuples(
 }
 
 template <typename T>
+vector< vector<HypedValue> >
+generate_hyped_values(vector< vector<int> > &tuples) {
+    vector< vector<HypedValue> > hyped_tuples;
+    for (vector<int> tuple : tuples) {
+        vector<HypedValue> row;
+        for (int x : tuple) {
+            row.push_back(HypedValue{ TypedValue{static_cast<T>(x)} });
+        }
+        hyped_tuples.push_back(row);
+    }
+    return hyped_tuples;
+}
+
+template <typename T>
 class compare {
 
     int attr_index;
@@ -215,6 +229,43 @@ TEST(HTreeTest, HTreeTest_Search_Partial_Overlap) {
     search_test(htree, { { {1, 1}, {1, 1}, {1, 1} } }, {
         { { {0, 2}, {0, 2}, {0, 2} } },
     });
+}
+
+TEST(HTreeTest, HTreeTest_Hyped_Tree_Long) {
+    vector< vector<int> > tuples = generate_uniform_tuples(3, { 3, 3, 3 });
+    vector< vector<HypedValue> > hyped_tuples =
+        generate_hyped_values<long>(tuples);
+    vector<int> num_buckets = { 3, 3, 3 };
+    sort_tuples(hyped_tuples, num_buckets);
+    auto htree = construct_htree(hyped_tuples, num_buckets);
+
+    HypedValue zero = HypedValue{TypedValue{static_cast<long>(0)}};
+    HypedValue one = HypedValue{TypedValue{static_cast<long>(1)}};
+    HypedValue two = HypedValue{TypedValue{static_cast<long>(2)}};
+    bucket<HypedValue> query = {{ { one, one }, { one, two }, { zero, two } }};
+
+    vector< shared_ptr< bucket<HypedValue> > > hits = htree->search(query);
+    EXPECT_EQ(buckets_overlapped(hits, query), 6);
+}
+
+TEST(HTreeTest, HTreeTest_Hyped_Tree_Double) {
+    vector< vector<int> > tuples = generate_uniform_tuples(4, { 4, 4, 4, 4 });
+    vector< vector<HypedValue> > hyped_tuples =
+        generate_hyped_values<double>(tuples);
+    vector<int> num_buckets = { 4, 4, 4, 4 };
+    sort_tuples(hyped_tuples, num_buckets);
+    auto htree = construct_htree(hyped_tuples, num_buckets);
+
+    HypedValue zero = HypedValue{TypedValue{static_cast<double>(0)}};
+    HypedValue half = HypedValue{TypedValue{static_cast<double>(0.5)}};
+    HypedValue one_plus_half = HypedValue{TypedValue{static_cast<double>(1.5)}};
+    HypedValue two = HypedValue{TypedValue{static_cast<double>(2)}};
+    bucket<HypedValue> query = {{
+        { zero, half }, { half, one_plus_half }, { zero, zero }, { zero, two }
+    }};
+
+    vector< shared_ptr< bucket<HypedValue> > > hits = htree->search(query);
+    EXPECT_EQ(buckets_overlapped(hits, query), 3);
 }
 
 TEST(HTreeTest, HTreeTest_Optimal_Partition_Construction) {
@@ -376,5 +427,6 @@ TEST(HTreeTest, HTreeTest_Suboptimal_Partition_Construction) {
         });
 
 }
+
 
 } //namespace quickstep
