@@ -91,6 +91,22 @@ class StarSchemaSimpleCostModel : public CostModel {
   std::size_t estimateNumDistinctValues(const expressions::ExprId attribute_id,
                                         const physical::PhysicalPtr &physical_plan);
 
+
+  /**
+   * @brief Estimate the selectivtiy of a range predicate using histograms
+   * @param attribute_id The expression id of the target attribute
+   * @param physical_plan The physical plan of the attributes's relation
+   * @param min The min of the range
+   * @param max The max of the range
+   * @return The estimated selecitivty over the base table for the attribute using histograms
+  */
+  double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
+    const expressions::ExprId attribute_id,
+    const physical::PhysicalPtr &physical_plan,
+    double min,
+    double max
+  );
+
   /**
    * @brief Estimate the "selectivity" of a physical plan under the assumption
    *        that it acts as a filtered dimension table in a hash join.
