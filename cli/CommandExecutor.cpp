@@ -332,20 +332,25 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
                                    storage_manager,
                                    query_processor,
                                    parser_wrapper.get());
-	  for (auto r : results) {
+	 
+	  HTree *mutable_histogram = relation->getHTreeMutable();
+	  std::vector<int> num_buckets(attributes.size(), 2);
+	  mutable_histogram->UpdateHistogram(results, num_buckets);
+ 
+	  /*for (auto r : results) {
 	  	for (auto vec : r) {
 			
 			fprintf(out, "%d ", vec.getLiteral<int>());
 			//std::cout << vec.getLiteral<int>();
 		}
 		fprintf(out, "\n");
-	  }
+	  }*/
 
     fprintf(out, "done\n");
     fflush(out);
   }// end for
-  //query_processor->markCatalogAltered();
-  //query_processor->saveCatalog();
+  query_processor->markCatalogAltered();
+  query_processor->saveCatalog();
 }
 
 void ExecuteAnalyze(const PtrVector<ParseString> &arguments,

@@ -26,6 +26,7 @@ using std::vector;
 using std::shared_ptr;
 using std::make_shared;
 
+class HTree;
 class HypedValue; // wrapper for TypedValue, used in the entries of the H-Tree.
 
 /*
@@ -92,6 +93,7 @@ interval<T> get_attr_interval(
  *
  *  A wrapper for the TypedValue class with comparison/arithmetic operators.
  */
+
 class HypedValue {
     TypedValue v;
 
@@ -115,162 +117,6 @@ public:
 
 };
 
-bool operator==(const HypedValue &h1, const HypedValue &h2) {
-    TypedValue v1 = h1.v;
-    TypedValue v2 = h2.v;
-    TypeID t = v1.getTypeID();
-    assert(t == v2.getTypeID());
-    switch(t) {
-      case kInt:
-        return v1.getLiteral<int>() == v2.getLiteral<int>();
-      case kLong:
-        return v1.getLiteral<std::int64_t>() == v2.getLiteral<std::int64_t>();
-      case kFloat:
-        return v1.getLiteral<float>() == v2.getLiteral<float>();
-      case kDouble:
-        return v1.getLiteral<double>() == v2.getLiteral<double>();
-      case kDate:
-        return v1.getLiteral<DateLit>() == v2.getLiteral<DateLit>();
-      case kDatetime:
-        return v1.getLiteral<DatetimeLit>() == v2.getLiteral<DatetimeLit>();
-      case kDatetimeInterval:
-        return v1.getLiteral<DatetimeIntervalLit>() ==
-            v2.getLiteral<DatetimeIntervalLit>();
-      case kYearMonthInterval:
-        return v1.getLiteral<YearMonthIntervalLit>() ==
-            v2.getLiteral<YearMonthIntervalLit>();
-      default:
-        return false; // unimplemented
-    }
-}
-
-bool operator!=(const HypedValue &h1, const HypedValue &h2) {
-    return !(h1 == h2);
-}
-
-bool operator<(const HypedValue &h1, const HypedValue &h2) {
-    TypedValue v1 = h1.v;
-    TypedValue v2 = h2.v;
-    TypeID t = v1.getTypeID();
-    assert(t == v2.getTypeID());
-    switch(t) {
-      case kInt:
-        return v1.getLiteral<int>() < v2.getLiteral<int>();
-      case kLong:
-        return v1.getLiteral<std::int64_t>() < v2.getLiteral<std::int64_t>();
-      case kFloat:
-        return v1.getLiteral<float>() < v2.getLiteral<float>();
-      case kDouble:
-        return v1.getLiteral<double>() < v2.getLiteral<double>();
-      case kDate:
-        return v1.getLiteral<DateLit>() < v2.getLiteral<DateLit>();
-      case kDatetime:
-        return v1.getLiteral<DatetimeLit>() < v2.getLiteral<DatetimeLit>();
-      case kDatetimeInterval:
-        return v1.getLiteral<DatetimeIntervalLit>() <
-            v2.getLiteral<DatetimeIntervalLit>();
-      case kYearMonthInterval:
-        return v1.getLiteral<YearMonthIntervalLit>() <
-            v2.getLiteral<YearMonthIntervalLit>();
-      default:
-        return false; // unimplemented
-    }
-}
-
-bool operator<=(const HypedValue &h1, const HypedValue &h2) {
-    return h1 < h2 || h1 == h2;
-}
-
-bool operator>(const HypedValue &h1, const HypedValue &h2) {
-    return !(h1 <= h2);
-}
-
-bool operator>=(const HypedValue &h1, const HypedValue &h2) {
-    return h1 > h2 || h1 == h2;
-}
-
-/* Shouldn't need this.
-double operator+(const HypedValue &h1, const HypedValue &h2) {
-    TypedValue v1 = h1.v;
-    TypedValue v2 = h2.v;
-    TypeID t = v1.getTypeID();
-    assert(t == v2.getTypeID());
-    switch(t) {
-      case kInt:
-        return v1.getLiteral<int>() + v2.getLiteral<int>();
-      case kFloat:
-        return v1.getLiteral<float>() + v2.getLiteral<float>();
-      case kLong:
-        return v1.getLiteral<std::int64_t>() + v2.getLiteral<std::int64_t>();
-      case kDouble:
-        return v1.getLiteral<double>() + v2.getLiteral<double>();
-      default:
-        return 0.0; // unimplemented
-    }
-}
-
-double operator-(const HypedValue &h1, const HypedValue &h2) {
-    TypedValue v1 = h1.v;
-    TypedValue v2 = h2.v;
-    TypeID t = v1.getTypeID();
-    assert(t == v2.getTypeID());
-    switch(t) {
-      case kInt:
-        return v1.getLiteral<int>() - v2.getLiteral<int>();
-      case kFloat:
-        return v1.getLiteral<float>() - v2.getLiteral<float>();
-      case kLong:
-        return v1.getLiteral<std::int64_t>() - v2.getLiteral<std::int64_t>();
-      case kDouble:
-        return v1.getLiteral<double>() - v2.getLiteral<double>();
-      default:
-        return 0.0; // unimplemented
-    }
-}
-*/
-
-double width(const HypedValue &h1, const HypedValue &h2) {
-    if (h1 > h2) {
-        return 0.0;
-    }
-    TypedValue v1 = h1.v;
-    TypedValue v2 = h2.v;
-    TypeID t = v1.getTypeID();
-    assert(t == v2.getTypeID());
-    // For integer values, the interval [x,y] contains y-x+1 points.
-    switch(t) {
-        case kInt:
-            return v2.getLiteral<int>() - v1.getLiteral<int>() + 1;
-        case kLong:
-            return v2.getLiteral<std::int64_t>() -
-                v1.getLiteral<std::int64_t>() + 1;
-        case kFloat:
-            return v2.getLiteral<float>() - v1.getLiteral<float>();
-        case kDouble:
-            assert(1 == 0);
-            return v2.getLiteral<double>() - v1.getLiteral<double>();
-        default:
-            return 0.0; // unimplemented
-    }
-}
-
-std::ostream& operator<<(std::ostream &os, const HypedValue &h) {
-    os << "HypedValue{";
-    switch(h.v.getTypeID()) {
-        case kInt:
-            os << h.v.getLiteral<int>();
-        case kLong:
-            os << h.v.getLiteral<std::int64_t>();
-        case kFloat:
-            os << h.v.getLiteral<float>();
-        case kDouble:
-            os << h.v.getLiteral<double>();
-        default: // unimplemented
-            break;
-    }
-    os << "}";
-    return os;
-}
 
 /*  _                _        _
  * | |__  _   _  ___| | _____| |_ ___
@@ -740,6 +586,49 @@ interval<T> get_attr_interval(
     return { key_min, key_max };
 }
 
+class HTree {
+    
+
+  public:
+   /* Constructor */
+   HTree()
+    : histogram_valid_(false) {}
+    
+   /*explicit HTree(const serialization::HTree &proto);
+   serialization::HTree getProto() const;*/ 
+
+	// one day support attributes 
+   //bool hasHistogram(const attribute_id attr_id) const {
+   bool hasHistogram() const {
+	return histogram_valid_;
+   } 
+
+   const shared_ptr<htree_node<TypedValue> > getRoot() const {
+	return root_;
+   } 
+
+   void dropHistogram() {
+	histogram_valid_ = false;
+   } 
+
+	// TODO: make these params const
+   void updateHistogram(vector< vector<TypedValue> > &tuples,
+						vector<int> &num_buckets) {
+	histogram_valid_ = true;
+	root_ = construct_htree(tuples, num_buckets);
+	root_->print(std::cout);
+   }
+
+  private:
+   // root node of histogram
+   shared_ptr<htree_node<TypedValue> > root_;
+
+   // Whether histogram has been constructed
+   bool histogram_valid_;
+
+   DISALLOW_COPY_AND_ASSIGN(HTree);
+
+};
 
 } // namespace quickstep
 #endif  // QUICKSTEP_HTREE_HTREE_HPP_
