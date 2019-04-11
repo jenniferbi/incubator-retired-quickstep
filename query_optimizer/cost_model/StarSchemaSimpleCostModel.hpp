@@ -43,6 +43,8 @@
 #include "query_optimizer/physical/WindowAggregate.hpp"
 #include "types/TypedValue.hpp"
 #include "utility/Macros.hpp"
+#include "histogram/HTree.hpp"
+
 
 namespace quickstep {
 namespace optimizer {
@@ -100,11 +102,11 @@ class StarSchemaSimpleCostModel : public CostModel {
    * @param max The max of the range
    * @return The estimated selecitivty over the base table for the attribute using histograms
   */
-  double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
+  double estimateSelectivityUsingHistogram(
     const expressions::ExprId attribute_id,
     const physical::PhysicalPtr &physical_plan,
-    double min,
-    double max
+    HypedValue min,
+    HypedValue max
   );
 
   /**
