@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "types/TypedValue.hpp"
+#include "histogram/HypedValue.hpp"
 #include "types/TypeID.hpp"
 
 /*  _   _     _____
@@ -27,7 +28,6 @@ using std::shared_ptr;
 using std::make_shared;
 
 class HTree;
-class HypedValue; // wrapper for TypedValue, used in the entries of the H-Tree.
 
 /*
  * An htree_node contains a vector of htree_elements. An htree_element contains
@@ -82,40 +82,6 @@ interval<T> get_attr_interval(
     unsigned int attr_index);
 
 
-
-/*  _   _                      ___     __    _
- * | | | |_   _ _ __   ___  __| \ \   / /_ _| |_   _  ___
- * | |_| | | | | '_ \ / _ \/ _` |\ \ / / _` | | | | |/ _ \
- * |  _  | |_| | |_) |  __/ (_| | \ V / (_| | | |_| |  __/
- * |_| |_|\__, | .__/ \___|\__,_|  \_/ \__,_|_|\__,_|\___|
- *        |___/|_|
- *  FIGLET: HypedValue
- *
- *  A wrapper for the TypedValue class with comparison/arithmetic operators.
- */
-
-class HypedValue {
-    TypedValue v;
-
-public:
-    HypedValue(TypedValue v) : v(v) {}
-
-    HypedValue(const HypedValue &h) : v(h.v) {}
-
-    friend bool operator==(const HypedValue &h1, const HypedValue &h2);
-    friend bool operator!=(const HypedValue &h1, const HypedValue &h2);
-    friend bool operator<(const HypedValue &h1, const HypedValue &h2);
-    friend bool operator<=(const HypedValue &h1, const HypedValue &h2);
-    friend bool operator>(const HypedValue &h1, const HypedValue &h2);
-    friend bool operator>=(const HypedValue &h1, const HypedValue &h2);
-    /* shouldn't need this.
-    friend double operator+(const HypedValue &h1, const HypedValue &h2);
-    friend double operator-(const HypedValue &h1, const HypedValue &h2);
-    */
-    friend double width(const HypedValue &h1, const HypedValue &h2);
-    friend std::ostream& operator<<(std::ostream &os, const HypedValue &h2);
-
-};
 
 
 /*  _                _        _
@@ -204,15 +170,6 @@ bool operator==(const bucket<T> a, const bucket<T> b) {
 template <typename T>
 bool operator!=(const bucket<T> a, const bucket<T> b) {
     return !(a == b);
-}
-
-// For int values, the interval [x,y] contains y-x+1 points.
-int width(int x, int y) {
-    return y - x + 1;
-}
-
-double width(double x, double y) {
-    return y - x;
 }
 
 // Calculate the proportion |this union query_interval| / |this|.
@@ -603,7 +560,7 @@ class HTree {
 	return histogram_valid_;
    } 
 
-   const shared_ptr<htree_node<TypedValue> > getRoot() const {
+   const shared_ptr<htree_node<HypedValue> > getRoot() const {
 	return root_;
    } 
 
@@ -612,7 +569,7 @@ class HTree {
    } 
 
 	// TODO: make these params const
-   void updateHistogram(vector< vector<TypedValue> > &tuples,
+   void updateHistogram(vector< vector<HypedValue> > &tuples,
 						vector<int> &num_buckets) {
 	histogram_valid_ = true;
 	root_ = construct_htree(tuples, num_buckets);
@@ -621,7 +578,7 @@ class HTree {
 
   private:
    // root node of histogram
-   shared_ptr<htree_node<TypedValue> > root_;
+   shared_ptr<htree_node<HypedValue> > root_;
 
    // Whether histogram has been constructed
    bool histogram_valid_;

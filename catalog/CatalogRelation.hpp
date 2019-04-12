@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "histogram/HTree.hpp"
+#include "histogram/HypedValue.hpp"
 #include "catalog/Catalog.pb.h"
 #include "catalog/CatalogConfig.h"
 #include "catalog/CatalogRelationSchema.hpp"
@@ -415,7 +416,7 @@ class CatalogRelation : public CatalogRelationSchema {
    *
    * @return A reference to the histogram of this catalog relation.
    */
-  const std::shared_ptr<const htree_node<TypedValue> > getHistogramRoot() const {
+  const std::shared_ptr<const htree_node<HypedValue> > getHistogramRoot() const {
     if (histogram_->hasHistogram()) {
         return histogram_->getRoot();
     }
@@ -427,7 +428,7 @@ class CatalogRelation : public CatalogRelationSchema {
    *
    * @return A pointer to the histogram of this catalog relation.
    */
-  HTree* getHistogramMutable() {
+  HTree* getHistogramMutable() const {
     return histogram_.get();
   }
 

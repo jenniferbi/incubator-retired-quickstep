@@ -39,6 +39,8 @@
 #include "cli/PrintToScreen.hpp"
 #include "expressions/aggregation/AggregateFunctionMax.hpp"
 #include "expressions/aggregation/AggregateFunctionMin.hpp"
+#include "histogram/HTree.hpp"
+#include "histogram/HypedValue.hpp"
 #include "parser/ParseStatement.hpp"
 #include "parser/ParseString.hpp"
 #include "parser/SqlParserWrapper.hpp"
@@ -273,9 +275,9 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
 
   std::vector<QueryHandle*> query_handles;
   // bucket sizes 
-  //const std::size_t bucket_1 = 2; //, bucket_2 = 3;
+  const std::size_t bucket_1 = 2; //, bucket_2 = 3;
+  const std::size_t N = 0; 
   //const std::size_t num_buckets = bucket_1 * bucket_2;
-  //const std::size_t N = 2;//should be number of tuples.
 
   // Analyze each relation in the database.
   for (const CatalogRelation &relation : relations) {
@@ -283,6 +285,10 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
     fflush(out);
 
     const std::string rel_name = EscapeQuotes(relation.getName(), '"');
+	if (relation.getStatistics().hasNumTuples()) {
+		N = relation.getStatistics().getNumTuples();
+	}
+
 
 	std::vector<std::string> *attributes = new std::vector<std::string>();
 	std::vector<TypeID> *attr_types = new std::vector<TypeID>();
@@ -333,18 +339,21 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
                                    query_processor,
                                    parser_wrapper.get());
 	 
-	  HTree *mutable_histogram = relation->getHTreeMutable();
-	  std::vector<int> num_buckets(attributes.size(), 2);
-	  mutable_histogram->UpdateHistogram(results, num_buckets);
+	  HTree *mutable_histogram = relation.getHistogramMutable();
+	  std::vector<int> num_buckets(attributes->size(), 2);
  
-	  /*for (auto r : results) {
+	  std::vector<std::vector<HypedValue> > hvalues;
+	  for (auto r : results) {
+	  	std::vector<HypedValue> hvalue;
 	  	for (auto vec : r) {
-			
+			hvalue.push_back(HypedValue(vec));
 			fprintf(out, "%d ", vec.getLiteral<int>());
 			//std::cout << vec.getLiteral<int>();
 		}
+		hvalues.push_back(hvalue);
 		fprintf(out, "\n");
-	  }*/
+	  }
+	  mutable_histogram->updateHistogram(hvalues, num_buckets);
 
     fprintf(out, "done\n");
     fflush(out);
