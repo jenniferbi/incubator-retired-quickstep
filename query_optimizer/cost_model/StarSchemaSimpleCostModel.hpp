@@ -43,6 +43,8 @@
 #include "query_optimizer/physical/WindowAggregate.hpp"
 #include "types/TypedValue.hpp"
 #include "utility/Macros.hpp"
+#include "histogram/HTree.hpp"
+
 
 namespace quickstep {
 namespace optimizer {
@@ -90,6 +92,22 @@ class StarSchemaSimpleCostModel : public CostModel {
    */
   std::size_t estimateNumDistinctValues(const expressions::ExprId attribute_id,
                                         const physical::PhysicalPtr &physical_plan);
+
+
+  /**
+   * @brief Estimate the selectivtiy of a range predicate using histograms
+   * @param attribute_id The expression id of the target attribute
+   * @param physical_plan The physical plan of the attributes's relation
+   * @param min The min of the range
+   * @param max The max of the range
+   * @return The estimated selecitivty over the base table for the attribute using histograms
+  */
+  double estimateSelectivityUsingHistogram(
+    const expressions::ExprId attribute_id,
+    const physical::PhysicalPtr &physical_plan,
+    HypedValue min,
+    HypedValue max
+  );
 
   /**
    * @brief Estimate the "selectivity" of a physical plan under the assumption
