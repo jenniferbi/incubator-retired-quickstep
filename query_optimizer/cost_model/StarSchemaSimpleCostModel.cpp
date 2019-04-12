@@ -330,7 +330,27 @@ double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
     HypedValue min,
     HypedValue max
   ) {
-  return 0.3;
+  DCHECK(E::ContainsExprId(physical_plan->getOutputAttributes(), attribute_id));
+
+  P::TableReferencePtr table_reference;
+  if (P::SomeTableReference::MatchesWithConditionalCast(physical_plan, &table_reference)) {
+    const auto rel_attr_id =
+      findCatalogRelationAttributeId(table_reference, attribute_id);
+    if (rel_attr_id != kInvalidAttributeID) {
+      const CatalogRelationStatistics &stat =
+        table_reference->relation()->getStatistics();
+      if (stat.hasHistogram()) {
+        return stat.getSelectivityForPredicate(rel_attr_id, min, max);
+      }
+    }
+  // return estimateCardinalityForTableReference(table_reference) * 0.1;
+    // return getSelectivityUsingHistogram(attribute_id, table_reference);
+  }
+  else {
+    // The selectivity does not act on base relations, return default 0.5
+    DLOG(INFO) << "The selectivity does not act on base relations, use default 0.5";
+    return 0.5;
+  }
 }
 
 
