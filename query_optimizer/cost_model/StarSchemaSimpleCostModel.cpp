@@ -337,14 +337,15 @@ double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
     const auto rel_attr_id =
       findCatalogRelationAttributeId(table_reference, attribute_id);
     if (rel_attr_id != kInvalidAttributeID) {
-      const CatalogRelationStatistics &stat =
-        table_reference->relation()->getStatistics();
-      if (stat.hasHistogram()) {
-        return stat.getSelectivityForPredicate(rel_attr_id, min, max);
+      const CatalogRelation* catalogRelation =
+        table_reference->relation();
+      if (catalogRelation->hasHistogram()) {
+        DLOG(INFO) << "Invoking getSelectivityForPredicate.";
+        return catalogRelation->getSelectivityForPredicate(rel_attr_id, min, max);
       }
     }
-  // return estimateCardinalityForTableReference(table_reference) * 0.1;
-    // return getSelectivityUsingHistogram(attribute_id, table_reference);
+    DLOG(INFO) << "Attribute gives kInvalidAttributeID on relation, use default 0.5";
+    return 0.5;
   }
   else {
     // The selectivity does not act on base relations, return default 0.5
