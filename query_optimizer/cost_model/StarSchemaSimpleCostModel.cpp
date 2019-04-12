@@ -64,6 +64,7 @@
 #include "types/NullType.hpp"
 #include "utility/EqualsAnyConstant.hpp"
 #include "histogram/HTree.hpp"
+#include "histogram/HypedValue.hpp"
 
 #include "gflags/gflags.h"
 
@@ -485,7 +486,8 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
             const std::size_t child_num_distinct_values = estimateNumDistinctValues(attr->id(), child);
             if (comparison_expression->isEqualityComparisonPredicate()) {
               return 1.0 / std::max(child_num_distinct_values, static_cast<std::size_t>(1u));
-            } else {
+            } 
+            else {
               // Instead of returning the naive number, use histogram to estimate range selectivity
               // est_selectivity = 1/NumBuckets(Num of overlapped buckets) 
               const ComparisonID comparison_type = comparison_expression->comparison().getComparisonID();
@@ -549,14 +551,11 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                 }
               }
               // return 1.0 / std::max(std::min(child_num_distinct_values / 100.0, 10.0), 2.0);
-
             }
           }
         }
-        // Cases where predicate attribute not present in child node attributes
         return 0.1;
       }
-      // In cases such as City.cid = Weather.cid
       return 0.5;
     }
     case E::ExpressionType::kLogicalAnd: {

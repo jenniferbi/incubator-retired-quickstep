@@ -2,6 +2,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "histogram/HTree.hpp"
+#include "histogram/HypedValue.hpp"
 
 namespace quickstep {
 

@@ -113,6 +113,8 @@ target_link_libraries(quickstep_catalog_CatalogRelation
                       quickstep_threading_SharedMutex
                       quickstep_threading_SpinSharedMutex
                       quickstep_utility_Macros
+                      quickstep_histogram_HTree
+                      quickstep_histogram_HypedValue
                       quickstep_utility_PtrVector)
 target_link_libraries(quickstep_catalog_CatalogRelationSchema
                       glog

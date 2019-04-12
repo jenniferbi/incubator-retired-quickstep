@@ -27,6 +27,8 @@
 #include <utility>
 #include <vector>
 
+#include "histogram/HTree.hpp"
+#include "histogram/HypedValue.hpp"
 #include "catalog/Catalog.pb.h"
 #include "catalog/CatalogConfig.h"
 #include "catalog/CatalogRelationSchema.hpp"
@@ -410,6 +412,27 @@ class CatalogRelation : public CatalogRelationSchema {
   }
 
   /**
+   * @brief Get an immutable reference to the histogram of this catalog relation.
+   *
+   * @return A reference to the histogram of this catalog relation.
+   */
+  const std::shared_ptr<const htree_node<HypedValue> > getHistogramRoot() const {
+    if (histogram_->hasHistogram()) {
+        return histogram_->getRoot();
+    }
+    return nullptr;
+  }
+
+  /**
+   * @brief Get a mutable pointer to the histogram of this catalog relation.
+   *
+   * @return A pointer to the histogram of this catalog relation.
+   */
+  HTree* getHistogramMutable() const {
+    return histogram_.get();
+  }
+
+  /**
    * @brief Get the size of this relation in bytes.
    *
    * @note The output signifies the amount of memory allocated for this
@@ -445,6 +468,9 @@ class CatalogRelation : public CatalogRelationSchema {
   alignas(kCacheLineBytes) mutable SpinSharedMutex<false> index_scheme_mutex_;
 
   std::unique_ptr<CatalogRelationStatistics> statistics_;
+  
+  // histogram is owned by CatalogRelation
+  std::unique_ptr<HTree> histogram_;
 
 #ifdef QUICKSTEP_HAVE_LIBNUMA
   // NUMA placement scheme object which has the mapping between the partitions
