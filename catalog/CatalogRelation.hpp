@@ -417,10 +417,20 @@ class CatalogRelation : public CatalogRelationSchema {
    * @return A reference to the histogram of this catalog relation.
    */
   const std::shared_ptr<const htree_node<HypedValue> > getHistogramRoot() const {
-    if (histogram_->hasHistogram()) {
+    if (hasHistogram()) {
         return histogram_->getRoot();
     }
     return nullptr;
+  }
+
+  /**
+   * @brief Check whether histogram exists for the relation.
+   *
+   * @return True if histogram exists for a column
+   *         false otherwise
+   */
+  bool hasHistogram() const {
+    return (histogram_ != nullptr && histogram_->getRoot() != nullptr);
   }
 
   /**

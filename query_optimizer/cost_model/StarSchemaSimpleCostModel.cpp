@@ -331,28 +331,29 @@ double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
     HypedValue min,
     HypedValue max
   ) {
-  DCHECK(E::ContainsExprId(physical_plan->getOutputAttributes(), attribute_id));
+  // DCHECK(E::ContainsExprId(physical_plan->getOutputAttributes(), attribute_id));
 
-  P::TableReferencePtr table_reference;
-  if (P::SomeTableReference::MatchesWithConditionalCast(physical_plan, &table_reference)) {
-    const auto rel_attr_id =
-      findCatalogRelationAttributeId(table_reference, attribute_id);
-    if (rel_attr_id != kInvalidAttributeID) {
-      const CatalogRelation* catalogRelation =
-        table_reference->relation();
-      if (catalogRelation->hasHistogram()) {
-        DLOG(INFO) << "Invoking getSelectivityForPredicate.";
-        return catalogRelation->getSelectivityForPredicate(rel_attr_id, min, max);
-      }
-    }
-    DLOG(INFO) << "Attribute gives kInvalidAttributeID on relation, use default 0.5";
-    return 0.5;
-  }
-  else {
-    // The selectivity does not act on base relations, return default 0.5
-    DLOG(INFO) << "The selectivity does not act on base relations, use default 0.5";
-    return 0.5;
-  }
+  // P::TableReferencePtr table_reference;
+  // if (P::SomeTableReference::MatchesWithConditionalCast(physical_plan, &table_reference)) {
+  //   const auto rel_attr_id =
+  //     findCatalogRelationAttributeId(table_reference, attribute_id);
+  //   if (rel_attr_id != kInvalidAttributeID) {
+  //     const CatalogRelation* catalogRelation =
+  //       table_reference->relation();
+  //     if (catalogRelation->hasHistogram()) {
+  //       DLOG(INFO) << "Invoking getSelectivityForPredicate.";
+  //       return catalogRelation->getSelectivityForPredicate(rel_attr_id, min, max);
+  //     }
+  //   }
+  //   DLOG(INFO) << "Attribute gives kInvalidAttributeID on relation, use default 0.5";
+  //   return 0.5;
+  // }
+  // else {
+  //   // The selectivity does not act on base relations, return default 0.5
+  //   DLOG(INFO) << "The selectivity does not act on base relations, use default 0.5";
+  //   return 0.5;
+  // }
+  return 0.4;
 }
 
 

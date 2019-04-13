@@ -547,31 +547,18 @@ class HTree {
     
 
   public:
-   /* Constructor */
-   HTree()
-    : histogram_valid_(false) {}
-    
-   /*explicit HTree(const serialization::HTree &proto);
-   serialization::HTree getProto() const;*/ 
-
-	// one day support attributes 
-   //bool hasHistogram(const attribute_id attr_id) const {
-   bool hasHistogram() const {
-	return histogram_valid_;
-   } 
 
    const shared_ptr<htree_node<HypedValue> > getRoot() const {
 	return root_;
    } 
 
    void dropHistogram() {
-	histogram_valid_ = false;
+	root_ = nullptr;
    } 
 
 	// TODO: make these params const
    void updateHistogram(vector< vector<HypedValue> > &tuples,
 						vector<int> &num_buckets) {
-	histogram_valid_ = true;
 	root_ = construct_htree(tuples, num_buckets);
 	root_->print(std::cout);
    }
@@ -580,8 +567,8 @@ class HTree {
    // root node of histogram
    shared_ptr<htree_node<HypedValue> > root_;
 
-   // Whether histogram has been constructed
-   bool histogram_valid_;
+   // // Whether histogram has been constructed
+   // bool histogram_valid_;
 
    DISALLOW_COPY_AND_ASSIGN(HTree);
 
