@@ -433,6 +433,23 @@ class CatalogRelation : public CatalogRelationSchema {
     return (histogram_ != nullptr && histogram_->getRoot() != nullptr);
   }
 
+
+  /**
+   * @brief Get the selectivity of a range predicate using histogram for the relation
+   *
+   * @param attr_id The id of the column.
+   * @param min Min value of the range.
+   * @param max Max value of the range.
+   *
+   * @return The selectivity of a range predicate on the attribute specified
+   */
+  double getSelectivityForPredicate(const attribute_id attr_id, 
+        HypedValue min, HypedValue max) {
+    DCHECK(hashHistogram());
+    
+  }
+
+
   /**
    * @brief Get a mutable pointer to the histogram of this catalog relation.
    *
