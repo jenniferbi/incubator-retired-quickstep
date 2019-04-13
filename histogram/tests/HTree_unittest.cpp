@@ -244,8 +244,7 @@ TEST(HTreeTest, HTreeTest_Hyped_Tree_Long) {
     HypedValue two = HypedValue{TypedValue{static_cast<long>(2)}};
     bucket<HypedValue> query = {{ { one, one }, { one, two }, { zero, two } }};
 
-    vector< shared_ptr< bucket<HypedValue> > > hits = htree->search(query);
-    EXPECT_EQ(buckets_overlapped(hits, query), 6);
+    EXPECT_EQ(htree->estimateSelectivity(query), 6);
 }
 
 TEST(HTreeTest, HTreeTest_Hyped_Tree_Double) {
@@ -264,8 +263,7 @@ TEST(HTreeTest, HTreeTest_Hyped_Tree_Double) {
         { zero, half }, { half, one_plus_half }, { zero, zero }, { zero, two }
     }};
 
-    vector< shared_ptr< bucket<HypedValue> > > hits = htree->search(query);
-    EXPECT_EQ(buckets_overlapped(hits, query), 3);
+    EXPECT_EQ(htree->estimateSelectivity(query), 3);
 }
 
 TEST(HTreeTest, HTreeTest_Optimal_Partition_Construction) {
