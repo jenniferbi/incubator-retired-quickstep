@@ -8,8 +8,8 @@ namespace quickstep {
 
 template <typename T>
 void test_compare() {
-    HypedValue less{ TypedValue{static_cast<T>(0)} };
-    HypedValue greater{ TypedValue{static_cast<T>(1)} };
+    HypedValue less = make_hyped_value<T>(0);
+    HypedValue greater = make_hyped_value<T>(1);
 
     EXPECT_TRUE(less != greater);
     EXPECT_TRUE(less < greater);
@@ -33,8 +33,8 @@ void test_compare() {
 
 template <typename T>
 void test_width_integer() {
-    HypedValue h1{ TypedValue{static_cast<T>(0)} };
-    HypedValue h2{ TypedValue{static_cast<T>(1)} };
+    HypedValue h1 = make_hyped_value<T>(0);
+    HypedValue h2 = make_hyped_value<T>(1);
 
     EXPECT_TRUE(width(h1, h2) == 2);
     EXPECT_TRUE(width(h1, h1) == 1);
@@ -43,8 +43,8 @@ void test_width_integer() {
 
 template <typename T>
 void test_width_floating_point() {
-    HypedValue h1{ TypedValue{static_cast<T>(0)} };
-    HypedValue h2{ TypedValue{static_cast<T>(1)} };
+    HypedValue h1 = make_hyped_value<T>(0);
+    HypedValue h2 = make_hyped_value<T>(1);
 
     EXPECT_TRUE(width(h1, h2) == 1);
     EXPECT_TRUE(width(h1, h1) == 0);
