@@ -272,6 +272,12 @@ std::ostream& operator<<(std::ostream &os, const HypedValue &h) {
     return os;
 }
 
+template <typename T>
+HypedValue make_hyped_value(T value) {
+    return HypedValue{TypedValue{static_cast<T>(value)}};
+}
+
+
 /*  _                _        _
  * | |__  _   _  ___| | _____| |_ ___
  * | '_ \| | | |/ __| |/ / _ \ __/ __|
