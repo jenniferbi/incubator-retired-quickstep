@@ -87,7 +87,8 @@ inline std::vector<std::vector<TypedValue> > ExecuteQueryForMultipleRows(
     tmb::MessageBus *bus,
     StorageManager *storage_manager,
     QueryProcessor *query_processor,
-    SqlParserWrapper *parser_wrapper) {
+    SqlParserWrapper *parser_wrapper,
+	FILE * out) {
   parser_wrapper->feedNextBuffer(new std::string(query_string));
 
   ParseResult result = parser_wrapper->getNextStatement();
@@ -143,13 +144,10 @@ inline std::vector<std::vector<TypedValue> > ExecuteQueryForMultipleRows(
                      query_processor->getDefaultDatabase(),
                      storage_manager);
 	// display time
-	/*
-  if (quickstep::FLAGS_display_timing) {
 	std::chrono::duration<double, std::milli> time_ms = end - start;
-	fprintf(, "Time: %s ms\n",
+	fprintf(out, "Time: %s ms\n",
 		   quickstep::DoubleToStringWithSignificantDigits(
 			   time_ms.count(), 3).c_str());
-  }*/
 
   return values;
 }
@@ -275,8 +273,8 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
 
   std::vector<QueryHandle*> query_handles;
   // bucket sizes 
-  const std::size_t bucket_1 = 2; //, bucket_2 = 3;
-  const std::size_t N = 0; 
+  const std::size_t bucket_1 = 4; //, bucket_2 = 3;
+  std::size_t N = 16; // TODO default is 16 
   //const std::size_t num_buckets = bucket_1 * bucket_2;
 
   // Analyze each relation in the database.
@@ -284,11 +282,12 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
     fprintf(out, "Building Histogram %s ... ", relation.getName().c_str());
     fflush(out);
 
+    std::vector< std::vector<TypedValue>> results;
     const std::string rel_name = EscapeQuotes(relation.getName(), '"');
+	// must be run with \analyze first?
 	if (relation.getStatistics().hasNumTuples()) {
 		N = relation.getStatistics().getNumTuples();
 	}
-
 
 	std::vector<std::string> *attributes = new std::vector<std::string>();
 	std::vector<TypeID> *attr_types = new std::vector<TypeID>();
@@ -301,60 +300,63 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
 			attr_types->emplace_back(attr_type);
 		}
 	}
-    /* Get the number of distinct values for each column.
-      const Type &attr_type = attribute.getType();
-      bool is_min_applicable =
-          AggregateFunctionMin::Instance().canApplyToTypes({&attr_type});
-      bool is_max_applicable =
-          AggregateFunctionMax::Instance().canApplyToTypes({&attr_type});*/
 
-    std::string query_string = "SELECT * FROM ( SELECT * FROM \"";
-	for (int i = 1; i < 2; i++){
-      query_string.append(rel_name);
-      query_string.append("\" ORDER BY ");
-      query_string.append((*attributes)[0]);
-      query_string.append("ASC, ");
-      query_string.append((*attributes)[1]);
-      query_string.append("ASC LIMIT ");
-      query_string.append(std::to_string(N/bucket_1));
-      query_string.append(" OFFSET ");
-      query_string.append(std::to_string((i-1)*N/bucket_1));
-      query_string.append(") AS tmp ORDER BY ");
-      query_string.append((*attributes)[1]);
-      query_string.append(" ASC;");
-	
-      std::string query_string = "SELECT * FROM \"";
-      query_string.append(rel_name);
-      query_string.append("\" ORDER BY ");
-      query_string.append((*attributes)[0]);
-	}   
-  	  DLOG(INFO) << "jennifer query: " << query_string;
-
-      std::vector< std::vector<TypedValue>> results =
+	// only supporting 2-dim for now
+	for (int i = 0; i < bucket_1; i ++) {
+		std::string query_string = "SELECT * FROM ( SELECT * FROM \"";
+		query_string.append(rel_name);
+		query_string.append("\" ORDER BY ");
+		query_string.append((*attributes)[0]);
+		query_string.append(" ASC, ");
+		query_string.append((*attributes)[1]);
+		query_string.append(" ASC LIMIT ");
+		query_string.append(std::to_string(N/bucket_1));
+		if (i != 0) {
+			query_string.append(" OFFSET ");
+		  	query_string.append(std::to_string((i)*N/bucket_1));
+		}
+		query_string.append(") AS tmp ORDER BY ");
+		query_string.append((*attributes)[1]);
+		query_string.append(" ASC;");
+		
+		DLOG(INFO) << "jennifer query: " << query_string;
+		//if (0) {
+        std::vector< std::vector<TypedValue>> loop_results =
           ExecuteQueryForMultipleRows(main_thread_client_id,
                                    foreman_client_id,
                                    query_string,
                                    bus,
                                    storage_manager,
                                    query_processor,
-                                   parser_wrapper.get());
-	 
+                                   parser_wrapper.get(),
+								   out);
+	    // extend results vector
+	    results.insert(results.end(), loop_results.begin(), loop_results.end());
+	 	//}
+    	fprintf(out, "%s\n", query_string.c_str());
+	} //end for
+	  
 	  HTree *mutable_histogram = relation.getHistogramMutable();
-	  std::vector<int> num_buckets(attributes->size(), 2);
- 
+	  std::vector<int> num_buckets = { 4, 2 };
+ 	  
 	  std::vector<std::vector<HypedValue> > hvalues;
 	  for (auto r : results) {
 	  	std::vector<HypedValue> hvalue;
 	  	for (auto vec : r) {
 			hvalue.push_back(HypedValue(vec));
-			fprintf(out, "%d ", vec.getLiteral<int>());
 			//std::cout << vec.getLiteral<int>();
 		}
 		hvalues.push_back(hvalue);
-		fprintf(out, "\n");
+	  }
+	  for (auto hv : hvalues) {
+	  	for (auto h : hv) {
+			std::cout << h.getTypedValue().getLiteral<int>() << " ";
+			//std::cout << vec.getLiteral<int>();
+		}
+		std::cout << "\n";
 	  }
 	  mutable_histogram->updateHistogram(hvalues, num_buckets);
-
+	  
     fprintf(out, "done\n");
     fflush(out);
   }// end for
