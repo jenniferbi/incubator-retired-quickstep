@@ -562,19 +562,30 @@ class HTree {
 	root_ = nullptr;
    } 
 
+   int getNumBuckets() {
+    return total_buckets_;
+   }
+
 	// TODO: make these params const
    void updateHistogram(vector< vector<HypedValue> > &tuples,
 						vector<int> &num_buckets) {
 	root_ = construct_htree(tuples, num_buckets);
+    total_buckets_ = getTotalBuckets(num_buckets);
 	root_->print(std::cout);
    }
 
   private:
    // root node of histogram
    shared_ptr<htree_node<HypedValue> > root_;
+   int total_buckets_;
 
-   // // Whether histogram has been constructed
-   // bool histogram_valid_;
+   int getTotalBuckets(vector<int> &num_buckets) {
+    int total = 1;
+    for (int i = 0; i < num_buckets.size()-1; i++){
+        total *= num_buckets[i];
+    }
+    return total;
+   }
 
    DISALLOW_COPY_AND_ASSIGN(HTree);
 

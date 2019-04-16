@@ -444,9 +444,13 @@ class CatalogRelation : public CatalogRelationSchema {
    * @return The selectivity of a range predicate on the attribute specified
    */
   double getSelectivityForPredicate(const attribute_id attr_id, 
-        HypedValue min, HypedValue max) {
-    DCHECK(hashHistogram());
+        HypedValue min, HypedValue max) const{
+    DCHECK(hasHistogram());
     
+    bucket<HypedValue> query = {{ {min, max} }};
+    double selectivity = (histogram_->getRoot()->estimateSelectivity(query)) /
+                         (histogram_->getNumBuckets());
+    return selectivity;
   }
 
 
