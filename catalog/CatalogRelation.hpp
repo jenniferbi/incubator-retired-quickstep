@@ -86,7 +86,8 @@ class CatalogRelation : public CatalogRelationSchema {
                   bool temporary = false)
       : CatalogRelationSchema(parent, name, id, temporary),
         default_layout_(nullptr),
-        statistics_(new CatalogRelationStatistics()) {
+        statistics_(new CatalogRelationStatistics()),
+        histogram_(new HTree()) {
   }
 
   /**

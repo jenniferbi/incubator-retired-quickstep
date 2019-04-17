@@ -461,8 +461,8 @@ void construct_hsubtree(
         (float) (tuples_end - tuples_begin) / num_buckets[attr_index]);
     assert(bucket_capacity > 0);
 
-	std::cout << "construct_hsubtree\n";
-	node->print(std::cout);
+	std::cerr << "construct_hsubtree\n";
+	node->print(std::cerr);
     // Each loop adds an element to the given node. Each element represents a
     // partition of tuples with size <= bucket_capacity.
     typename vector< vector<T> >::iterator partition_begin = tuples_begin;
@@ -547,10 +547,15 @@ interval<T> get_attr_interval(
     return { key_min, key_max };
 }
 
-class HTree {
-    
+class HTree {    
 
   public:
+
+  /**
+   * @brief Constructor.
+   **/
+    HTree()
+		: root_(nullptr) {}
 
    const shared_ptr<htree_node<HypedValue> > getRoot() const {
 	return root_;
@@ -565,7 +570,6 @@ class HTree {
 						vector<int> &num_buckets) {
 	std::cout << "update histogram\n";
 	root_ = construct_htree(tuples, num_buckets);
-	root_->print(std::cout);
    }
 
   private:
