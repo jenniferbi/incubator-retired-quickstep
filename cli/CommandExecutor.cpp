@@ -344,18 +344,17 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
 	  	std::vector<HypedValue> hvalue;
 	  	for (auto vec : r) {
 			hvalue.push_back(HypedValue(vec));
-			//std::cout << vec.getLiteral<int>();
 		}
 		hvalues.push_back(hvalue);
 	  }
-	  for (auto hv : hvalues) {
+	  /*for (auto hv : hvalues) {
 	  	for (auto h : hv) {
-			std::cout << h.getTypedValue().getLiteral<int>() << " ";
-			//std::cout << vec.getLiteral<int>();
+			std::cout << h.getTypedValue().getLiteral<std::int64_t>() << " ";
 		}
 		std::cout << "\n";
-	  }
+	  }*/
 	  mutable_histogram->updateHistogram(hvalues, num_buckets);
+	  mutable_histogram->getRoot()->print(std::cout);
 	  
     fprintf(out, "done\n");
     fflush(out);

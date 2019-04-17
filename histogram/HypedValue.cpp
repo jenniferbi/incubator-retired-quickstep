@@ -130,12 +130,16 @@ std::ostream& operator<<(std::ostream &os, const HypedValue &h) {
     switch(h.v.getTypeID()) {
         case kInt:
             os << h.v.getLiteral<int>();
+			break;
         case kLong:
             os << h.v.getLiteral<std::int64_t>();
+			break;
         case kFloat:
             os << h.v.getLiteral<float>();
+			break;
         case kDouble:
             os << h.v.getLiteral<double>();
+			break;
         default: // unimplemented
             break;
     }
