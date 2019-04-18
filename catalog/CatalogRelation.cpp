@@ -141,6 +141,9 @@ CatalogRelation::CatalogRelation(const serialization::CatalogRelationSchema &pro
   } else {
     statistics_.reset(new CatalogRelationStatistics());
   }
+
+	// histogram
+	histogram_.reset(new HTree());
 }
 
 serialization::CatalogRelationSchema CatalogRelation::getProto() const {

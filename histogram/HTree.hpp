@@ -27,7 +27,7 @@ using std::vector;
 using std::shared_ptr;
 using std::make_shared;
 
-class HTree;
+namespace serialization { class HTree; }
 
 /*
  * An htree_node contains a vector of htree_elements. An htree_element contains
@@ -434,19 +434,21 @@ shared_ptr< htree_node<T> > construct_htree(
     vector< vector<T> > &tuples, vector<int> &num_buckets)
 {
     if (tuples.size() == 0) {
+		std::cout << "tuple size 0\n";
         return nullptr;
     }
     // Initialize root node.
     shared_ptr< htree_node<T> > root =
         make_shared< htree_node<T> >(tuples[0].size() - 1);
-
+	if (root == nullptr){
+	std::cout << "root is null\n";
+	}
     // Leaf nodes contain the keys of all ancestors, so we need to keep track
     // of the keys along the current path.
     vector< interval<T> > current_bkt;
 
     construct_hsubtree(
         root, current_bkt, tuples.begin(), tuples.end(), num_buckets, 0);
-
     return root;
 }
 
@@ -465,6 +467,8 @@ void construct_hsubtree(
         (float) (tuples_end - tuples_begin) / num_buckets[attr_index]);
     assert(bucket_capacity > 0);
 
+	std::cerr << "construct_hsubtree\n";
+	node->print(std::cerr);
     // Each loop adds an element to the given node. Each element represents a
     // partition of tuples with size <= bucket_capacity.
     typename vector< vector<T> >::iterator partition_begin = tuples_begin;
@@ -549,10 +553,30 @@ interval<T> get_attr_interval(
     return { key_min, key_max };
 }
 
-class HTree {
-    
+class HTree {    
 
   public:
+
+  /**
+   * @brief Constructor.
+   **/
+    HTree()
+		: root_(nullptr) {}
+  /**
+   * @brief Reconstruct a HTree object from its serialized
+   *        Protocol Buffer form.
+   *
+   * @param proto The Protocol Buffer serialization of a HTree 
+   *        object, previously produced by getProto().
+   **/
+  explicit HTree(const serialization::HTree &proto);
+
+  /**
+   * @brief Serialize the HTree object as Protocol Buffer.
+   *
+   * @return The Protocol Buffer representation of the HTree object.
+   **/
+  serialization::HTree getProto() const;
 
    const shared_ptr<htree_node<HypedValue> > getRoot() const {
 	return root_;
@@ -569,9 +593,9 @@ class HTree {
 	// TODO: make these params const
    void updateHistogram(vector< vector<HypedValue> > &tuples,
 						vector<int> &num_buckets) {
+	std::cout << "update histogram\n";
 	root_ = construct_htree(tuples, num_buckets);
     total_buckets_ = getTotalBuckets(num_buckets);
-	root_->print(std::cout);
    }
 
   private:

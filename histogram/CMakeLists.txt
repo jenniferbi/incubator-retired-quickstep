@@ -17,16 +17,31 @@
 
 set_gflags_lib_name ()
 
-# Declare micro-libs:
-add_library(quickstep_histogram_HTree ../empty_src.cpp HTree.hpp)
 
+
+
+
+QS_PROTOBUF_GENERATE_CPP(histogram_HTree_proto_srcs histogram_HTree_proto_hdrs HTree.proto)
+
+
+# Declare micro-libs:
+add_library(quickstep_histogram_HTree HTree.cpp HTree.hpp)
 add_library(quickstep_histogram_HypedValue HypedValue.cpp HypedValue.hpp)
+add_library(quickstep_histogram_HTree_proto ${histogram_HTree_proto_srcs})
 
 # Module all-in-one library:
 add_library(quickstep_histogram ../empty_src.cpp HistogramModule.hpp)
 target_link_libraries(quickstep_histogram
 					  quickstep_histogram_HypedValue
-                      quickstep_histogram_HTree)
+                      quickstep_histogram_HTree
+					  quickstep_histogram_HTree_proto)
+target_link_libraries(quickstep_histogram_HTree
+					  quickstep_histogram_HypedValue
+                      quickstep_types_TypedValue
+					  quickstep_histogram_HTree_proto)
+target_link_libraries(quickstep_histogram_HTree_proto
+                      ${PROTOBUF_LIBRARY}
+                      quickstep_types_TypedValue_proto)
 # Link dependencies:
 #target_link_libraries(quickstep_utility_Alignment
 #                      glog

@@ -114,6 +114,7 @@ target_link_libraries(quickstep_catalog_CatalogRelation
                       quickstep_threading_SpinSharedMutex
                       quickstep_utility_Macros
                       quickstep_histogram_HTree
+                      quickstep_histogram_HTree_proto
                       quickstep_histogram_HypedValue
                       quickstep_utility_PtrVector)
 target_link_libraries(quickstep_catalog_CatalogRelationSchema
@@ -137,7 +138,8 @@ target_link_libraries(quickstep_catalog_Catalog_proto
                       ${PROTOBUF_LIBRARY}
                       quickstep_storage_StorageBlockLayout_proto
                       quickstep_types_Type_proto
-                      quickstep_types_TypedValue_proto)
+                      quickstep_types_TypedValue_proto
+					  quickstep_histogram_HTree_proto)
 target_link_libraries(quickstep_catalog_IndexScheme
                       glog
                       quickstep_catalog_Catalog_proto
