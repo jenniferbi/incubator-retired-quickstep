@@ -27,7 +27,7 @@ using std::vector;
 using std::shared_ptr;
 using std::make_shared;
 
-class HTree;
+namespace serialization { class HTree; }
 
 /*
  * An htree_node contains a vector of htree_elements. An htree_element contains
@@ -556,6 +556,21 @@ class HTree {
    **/
     HTree()
 		: root_(nullptr) {}
+  /**
+   * @brief Reconstruct a HTree object from its serialized
+   *        Protocol Buffer form.
+   *
+   * @param proto The Protocol Buffer serialization of a HTree 
+   *        object, previously produced by getProto().
+   **/
+  explicit HTree(const serialization::HTree &proto);
+
+  /**
+   * @brief Serialize the HTree object as Protocol Buffer.
+   *
+   * @return The Protocol Buffer representation of the HTree object.
+   **/
+  serialization::HTree getProto() const;
 
    const shared_ptr<htree_node<HypedValue> > getRoot() const {
 	return root_;
