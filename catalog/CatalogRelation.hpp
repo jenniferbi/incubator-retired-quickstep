@@ -26,6 +26,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <limits>
 
 #include "histogram/HTree.hpp"
 #include "histogram/HypedValue.hpp"
@@ -438,17 +439,33 @@ class CatalogRelation : public CatalogRelationSchema {
   /**
    * @brief Get the selectivity of a range predicate using histogram for the relation
    *
+   * @param num_attr The number of attributes
    * @param attr_id The id of the column.
    * @param min Min value of the range.
    * @param max Max value of the range.
    *
    * @return The selectivity of a range predicate on the attribute specified
    */
-  double getSelectivityForPredicate(const attribute_id attr_id, 
+  double getSelectivityForPredicate(const int num_attr,
+        const attribute_id attr_id, 
         HypedValue min, HypedValue max) const{
     DCHECK(hasHistogram());
     
-    bucket<HypedValue> query = {{ {min, max} }};
+    vector< interval<HypedValue> > dimensions;
+    HypedValue smallest_double = 
+        HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::max())}};
+    HypedValue largest_double = 
+        HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::lowest())}};
+    for (int i = 0; i < num_attr; ++i) {
+      if (i == attr_id) {
+        dimensions.emplace_back(smallest_double, largest_double);
+      }
+      else {
+        dimensions.emplace_back(min, max);
+      }
+    }
+
+    bucket<HypedValue> query = {dimensions};
     double selectivity = (histogram_->getRoot()->estimateSelectivity(query)) /
                          (histogram_->getNumBuckets());
     return selectivity;

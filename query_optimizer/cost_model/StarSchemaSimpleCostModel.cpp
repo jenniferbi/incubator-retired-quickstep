@@ -342,7 +342,8 @@ double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
         table_reference->relation();
       if (catalogRelation->hasHistogram()) {
         DLOG(INFO) << "Invoking getSelectivityForPredicate.";
-        return catalogRelation->getSelectivityForPredicate(rel_attr_id, min, max);
+        const int num_attr = table_reference->attribute_list().size();
+        return catalogRelation->getSelectivityForPredicate(num_attr, rel_attr_id, min, max);
       }
     }
     DLOG(INFO) << "Attribute gives kInvalidAttributeID on relation, use default 0.5";
