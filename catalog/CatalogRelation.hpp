@@ -465,9 +465,10 @@ class CatalogRelation : public CatalogRelationSchema {
       }
     }
 
-    bucket<HypedValue> query = {dimensions};
+    bucket<HypedValue> query(dimensions);
     double selectivity = (histogram_->getRoot()->estimateSelectivity(query)) /
-                         (histogram_->getNumBuckets());
+                          (histogram_->getNumBuckets());
+    // std::cerr << selectivity << "\n";
     return selectivity;
   }
 
