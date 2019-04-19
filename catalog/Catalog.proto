@@ -22,6 +22,7 @@ package quickstep.serialization;
 import "storage/StorageBlockLayout.proto";
 import "types/Type.proto";
 import "types/TypedValue.proto";
+import "histogram/HTree.proto";
 
 message CatalogAttribute {
   required string name = 1;
@@ -120,6 +121,7 @@ message CatalogRelation {
     optional PartitionScheme partition_scheme = 19;
     optional NUMAPlacementScheme placement_scheme = 20;
     optional CatalogRelationStatistics statistics = 21;
+    optional HTree histogram = 22;
   }
 }
 
