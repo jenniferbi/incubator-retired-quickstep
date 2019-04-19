@@ -328,8 +328,7 @@ std::size_t StarSchemaSimpleCostModel::estimateNumDistinctValues(
 double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
     const expressions::ExprId attribute_id,
     const physical::PhysicalPtr &physical_plan,
-    HypedValue min,
-    HypedValue max
+    const interval<HypedValue> &query_interval
   ) {
   DCHECK(E::ContainsExprId(physical_plan->getOutputAttributes(), attribute_id));
 
@@ -343,7 +342,7 @@ double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
       if (catalogRelation->hasHistogram()) {
         DLOG(INFO) << "Invoking getSelectivityForPredicate.";
         const int num_attr = table_reference->attribute_list().size();
-        return catalogRelation->getSelectivityForPredicate(num_attr, rel_attr_id, min, max);
+        return catalogRelation->getSelectivityForPredicate(num_attr, rel_attr_id, query_interval);
       }
     }
     DLOG(INFO) << "Attribute gives kInvalidAttributeID on relation, use default 0.5";
@@ -493,6 +492,7 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
               // est_selectivity = 1/NumBuckets(Num of overlapped buckets) 
               const ComparisonID comparison_type = comparison_expression->comparison().getComparisonID();
               expressions::ScalarLiteralPtr scalarLiteral;
+              HypedValue zero = HypedValue{TypedValue{static_cast<double>(0)}};
             
               if (E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->left(), &attr) &&
                  E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->right(), &scalarLiteral)) {
@@ -507,15 +507,13 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                 switch (comparison_type) {
                   case ComparisonID::kLess:
                   case ComparisonID::kLessOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::lowest())}},
-                      HypedValue(typed_value));
+                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child,
+                      {false, zero, true, HypedValue(typed_value)});
                     return selectivity;
                   }
                   case ComparisonID::kGreater: {
                     double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      HypedValue(typed_value), 
-                      HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::max())}});
+                      {true, HypedValue(typed_value), false, zero});
                     return selectivity;
                   }
                   default:
@@ -537,14 +535,12 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                   case ComparisonID::kLess:
                   case ComparisonID::kLessOrEqual: {
                     double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      HypedValue(typed_value), 
-                      HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::max())}});
+                      {true, HypedValue(typed_value), false, zero});
                     return selectivity;
                   }
                   case ComparisonID::kGreater: {
-                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::lowest())}},
-                      HypedValue(typed_value));
+                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child,
+                      {false, zero, true, HypedValue(typed_value)});
                     return selectivity;
                   }
                   default:

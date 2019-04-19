@@ -448,27 +448,24 @@ class CatalogRelation : public CatalogRelationSchema {
    */
   double getSelectivityForPredicate(const int num_attr,
         const attribute_id attr_id, 
-        HypedValue min, HypedValue max) const{
+        const interval<HypedValue> &query_interval) const{
     DCHECK(hasHistogram());
     
     vector< interval<HypedValue> > dimensions;
-    HypedValue smallest_double = 
-        HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::max())}};
-    HypedValue largest_double = 
-        HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::lowest())}};
+    HypedValue zero = HypedValue{TypedValue{static_cast<double>(0)}};
+
     for (int i = 0; i < num_attr; ++i) {
       if (i == attr_id) {
-        dimensions.emplace_back(smallest_double, largest_double);
+        dimensions.emplace_back(false, zero, false, zero);
       }
       else {
-        dimensions.emplace_back(min, max);
+        dimensions.emplace_back(query_interval);
       }
     }
 
-    bucket<HypedValue> query(dimensions);
-    double selectivity = (histogram_->getRoot()->estimateSelectivity(query)) /
-                          (histogram_->getNumBuckets());
-    // std::cerr << selectivity << "\n";
+    const bucket<HypedValue> query(dimensions);
+    double num_buckets = histogram_->getRoot()->estimateSelectivity(query);
+    double selectivity = num_buckets/ histogram_->getNumBuckets();
     return selectivity;
   }
 

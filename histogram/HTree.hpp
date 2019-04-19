@@ -560,8 +560,8 @@ template <typename T>
   /**
    * @brief Constructor.
    **/
-    HTree()
-    : root_(nullptr) {}
+  HTree()
+  : root_(nullptr) {}
   /**
    * @brief Reconstruct a HTree object from its serialized
    *        Protocol Buffer form.
@@ -569,41 +569,41 @@ template <typename T>
    * @param proto The Protocol Buffer serialization of a HTree 
    *        object, previously produced by getProto().
    **/
-    explicit HTree(const serialization::HTree &proto);
+  explicit HTree(const serialization::HTree &proto);
 
   /**
    * @brief Serialize the HTree object as Protocol Buffer.
    *
    * @return The Protocol Buffer representation of the HTree object.
    **/
-    serialization::HTree getProto() const;
+  serialization::HTree getProto() const;
 
-    const shared_ptr<htree_node<HypedValue> > getRoot() const {
-     return root_;
-   } 
+  const shared_ptr<htree_node<HypedValue> > getRoot() const {
+    return root_;
+  } 
 
-   void dropHistogram() {
-     root_ = nullptr;
-   } 
+  void dropHistogram() {
+    root_ = nullptr;
+  } 
 
-   int getNumBuckets() {
+  int getNumBuckets() {
     return total_buckets_;
   }
 
 	// TODO: make these params const
   void updateHistogram(vector< vector<HypedValue> > &tuples,
     vector<int> &num_buckets) {
-   std::cout << "update histogram\n";
-   root_ = construct_htree(tuples, num_buckets);
-   total_buckets_ = getTotalBuckets(num_buckets);
- }
+    std::cout << "update histogram\n";
+    root_ = construct_htree(tuples, num_buckets);
+    total_buckets_ = getTotalBuckets(num_buckets);
+  }
 
 private:
-   // root node of histogram
- shared_ptr<htree_node<HypedValue> > root_;
- int total_buckets_;
+  // root node of histogram
+  shared_ptr<htree_node<HypedValue> > root_;
+  int total_buckets_;
 
- int getTotalBuckets(vector<int> &num_buckets) {
+  int getTotalBuckets(vector<int> &num_buckets) {
   int total = 1;
   for (int i = 0; i < num_buckets.size(); i++){
     total *= num_buckets[i];

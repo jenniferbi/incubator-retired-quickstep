@@ -105,8 +105,7 @@ class StarSchemaSimpleCostModel : public CostModel {
   double estimateSelectivityUsingHistogram(
     const expressions::ExprId attribute_id,
     const physical::PhysicalPtr &physical_plan,
-    HypedValue min,
-    HypedValue max
+    const interval<HypedValue> &query_interval
   );
 
   /**
