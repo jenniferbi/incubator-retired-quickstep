@@ -492,7 +492,7 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
               // est_selectivity = 1/NumBuckets(Num of overlapped buckets) 
               const ComparisonID comparison_type = comparison_expression->comparison().getComparisonID();
               expressions::ScalarLiteralPtr scalarLiteral;
-              HypedValue zero = HypedValue{TypedValue{static_cast<double>(0)}};
+              HypedValue zero = HypedValue{TypedValue{static_cast<int>(0)}};
             
               if (E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->left(), &attr) &&
                  E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->right(), &scalarLiteral)) {

@@ -452,7 +452,7 @@ class CatalogRelation : public CatalogRelationSchema {
     DCHECK(hasHistogram());
     
     vector< interval<HypedValue> > dimensions;
-    HypedValue zero = HypedValue{TypedValue{static_cast<double>(0)}};
+    HypedValue zero = HypedValue{TypedValue{static_cast<int>(0)}};
 
     for (int i = 0; i < num_attr; ++i) {
       if (i == attr_id) {
