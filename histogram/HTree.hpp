@@ -27,7 +27,12 @@ using std::vector;
 using std::shared_ptr;
 using std::make_shared;
 
-namespace serialization { class HTree; }
+namespace serialization { 
+    class HTree; 
+    class HTree_HTreeElem; 
+    class HTree_HTreeInterval; 
+    class HTree_HTreeNode; 
+}
 
 /*
  * An htree_node contains a vector of htree_elements. An htree_element contains
@@ -255,6 +260,13 @@ private:
 
 public:
 
+    static void getProtoHelper(
+                        serialization::HTree_HTreeElem &proto,
+                        const htree_element<T>& elem);
+
+    static htree_element<T> ReconstructFromProto(const
+                        serialization::HTree_HTreeElem &proto);
+
     const interval<T>& get_key() const {
         return key;
     }
@@ -349,6 +361,15 @@ private:
 public:
 
     htree_node(unsigned int level) : level(level) {};
+    htree_node(unsigned int level, vector<htree_element<T>> elts)
+                                 : level(level), elements(elts) {};
+   
+    static void getProtoHelper(
+                serialization::HTree_HTreeNode &proto,
+                const htree_node<T>& node);
+    
+    static htree_node<T>* ReconstructFromProto(const
+                        serialization::HTree_HTreeNode &proto);
 
     bool is_internal() const {
         return level > 0;
@@ -614,6 +635,24 @@ class HTree {
    DISALLOW_COPY_AND_ASSIGN(HTree);
 
 };
+
+
+template<>
+void htree_element<HypedValue>::getProtoHelper(
+                serialization::HTree_HTreeElem &proto,
+                const htree_element<HypedValue>& elem);
+template <>
+void htree_node<HypedValue>::getProtoHelper(
+           serialization::HTree_HTreeNode &proto,
+            const htree_node<HypedValue>& node);
+
+template<>
+htree_element<HypedValue> htree_element<HypedValue>::ReconstructFromProto(
+					const serialization::HTree_HTreeElem &proto);
+
+template<>
+htree_node<HypedValue>* htree_node<HypedValue>::ReconstructFromProto(
+					const serialization::HTree_HTreeNode &proto);
 
 } // namespace quickstep
 #endif  // QUICKSTEP_HTREE_HTREE_HPP_

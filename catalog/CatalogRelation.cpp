@@ -142,8 +142,15 @@ CatalogRelation::CatalogRelation(const serialization::CatalogRelationSchema &pro
     statistics_.reset(new CatalogRelationStatistics());
   }
 
-	// histogram
+  // histogram deserialization
+  if (proto.HasExtension(serialization::CatalogRelation::histogram)) {
+    histogram_.reset(
+        new HTree(
+            proto.GetExtension(serialization::CatalogRelation::histogram)));
+  } else {
 	histogram_.reset(new HTree());
+  }
+   
 }
 
 serialization::CatalogRelationSchema CatalogRelation::getProto() const {
@@ -177,6 +184,9 @@ serialization::CatalogRelationSchema CatalogRelation::getProto() const {
 
   proto.MutableExtension(serialization::CatalogRelation::statistics)
       ->MergeFrom(statistics_->getProto());
+
+  proto.MutableExtension(serialization::CatalogRelation::histogram)
+      ->MergeFrom(histogram_->getProto());
 
   return proto;
 }

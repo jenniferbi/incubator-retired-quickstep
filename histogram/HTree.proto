@@ -34,5 +34,5 @@ message HTree {
 		optional TypedValue low = 1;
 		optional TypedValue high = 2;
 	}
-	repeated HTreeElem root = 1;
+	optional HTreeNode root = 1;
 }

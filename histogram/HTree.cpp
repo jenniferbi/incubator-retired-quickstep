@@ -24,75 +24,168 @@
 
 namespace quickstep {
 
+using std::vector;
+using std::shared_ptr;
+using std::make_shared;
+
+template<typename T>
+htree_element<T> htree_element<T>::ReconstructFromProto(const
+				serialization::HTree_HTreeElem &proto) {
+	LOG_WARNING("deserialization for non-HypedV HTree not supported")
+}
+
+template<typename T>
+htree_node<T>* htree_node<T>::ReconstructFromProto(const 
+				serialization::HTree_HTreeNode &proto) {
+	LOG_WARNING("deserialization for non-HypedV HTree not supported")
+}
+
+// helpers in charge of allocating memory via new
+// caller creates shared ptr from naked ptr
+template<>
+htree_element<HypedValue> htree_element<HypedValue>::ReconstructFromProto(
+					const serialization::HTree_HTreeElem &proto) {
+
+	interval<HypedValue>* key_ = nullptr;
+
+	if (proto.has_key()) {	
+		const serialization::HTree_HTreeInterval &key_proto = proto.key();
+		bool has_min_ = false, has_max_ = false;
+		HypedValue* max_ = nullptr, *min_ = nullptr;
+		if (key_proto.has_low()) {
+			has_min_ = true;
+			*min_ = HypedValue(
+				TypedValue::ReconstructFromProto(key_proto.low()));
+		}
+		if (key_proto.has_high()) {
+			has_max_ = true;
+			*max_ = HypedValue(
+				TypedValue::ReconstructFromProto(key_proto.high()));
+		}
+		*key_ = interval<HypedValue>(has_min_, *min_, has_max_, *max_);
+	}
+
+	if (proto.has_child()) {
+		shared_ptr<htree_node<HypedValue> > child_(
+			htree_node<HypedValue>::ReconstructFromProto(proto.child()));
+		return htree_element<HypedValue>(*key_, child_);
+	} 
+
+	shared_ptr<bucket<HypedValue> > bkt_entry;
+	vector<interval<HypedValue> > dims;
+	dims.reserve(proto.bucket_size());
+	for (int bucket_num = 0; bucket_num < proto.bucket_size(); ++bucket_num) {
+		const serialization::HTree_HTreeInterval &bkt_proto
+								 = proto.bucket(bucket_num);
+		bool has_min_ = false, has_max_ = false;
+		HypedValue* max_ = nullptr, *min_ = nullptr;
+		if (bkt_proto.has_low()) {
+			has_min_ = true;
+			*min_ = HypedValue(
+				TypedValue::ReconstructFromProto(bkt_proto.low()));
+		}
+		if (bkt_proto.has_high()) {
+			has_max_ = true;
+			*max_ = HypedValue(
+				TypedValue::ReconstructFromProto(bkt_proto.high()));
+		}
+		dims.emplace_back(has_min_, *min_, has_max_, *max_);
+	} // end for
+	bkt_entry = make_shared<bucket<HypedValue> >(dims);
+	return htree_element<HypedValue>(*key_, bkt_entry);
+
+}
+
+template<>
+htree_node<HypedValue>* htree_node<HypedValue>::ReconstructFromProto(const 
+				serialization::HTree_HTreeNode &proto) {
+	vector<htree_element<HypedValue> > elts;
+	elts.reserve(proto.elements_size());	
+	for (int elt_num = 0; elt_num < proto.elements_size(); ++elt_num) {
+		const serialization::HTree_HTreeElem &elt = proto.elements(elt_num);
+		elts.push_back(
+	    	htree_element<HypedValue>::ReconstructFromProto(elt));	
+	}
+	return new htree_node<HypedValue>(1, elts);
+}
+
+
 HTree::HTree(
     const serialization::HTree &proto) {
-/*
-  if (proto.has_is_exact()) {
-    is_exact_ = proto.is_exact();
-  } else {
-    is_exact_ = false;
+
+  if (proto.has_root()) {
+    root_.reset(htree_node<HypedValue>::ReconstructFromProto(proto.root()));
   }
 
-  if (proto.has_num_tuples()) {
-    num_tuples_ = TypedValue::ReconstructFromProto(proto.num_tuples());
-  } else {
-    num_tuples_ = kNullValue;
-  }
+}	
 
-  for (int i = 0; i < proto.column_stats_size(); ++i) {
-    const auto &stat_proto = proto.column_stats(i);
-    auto &stat = column_stats_[stat_proto.attr_id()];
-    if (stat_proto.has_num_distinct_values()) {
-      stat.num_distinct_values =
-          TypedValue::ReconstructFromProto(stat_proto.num_distinct_values());
-    }
-    if (stat_proto.has_min_value()) {
-      stat.min_value =
-          TypedValue::ReconstructFromProto(stat_proto.min_value());
-    }
-    if (stat_proto.has_max_value()) {
-      stat.max_value =
-          TypedValue::ReconstructFromProto(stat_proto.max_value());
-    }
-  }*/
+template<typename T>
+void htree_element<T>::getProtoHelper(
+				serialization::HTree_HTreeElem &proto,
+				const htree_element<T>& elem) {
+	LOG_WARNING("serialization for non-HypedV HTree not supported")
+}
+
+template<typename T>
+void htree_node<T>::getProtoHelper(
+				serialization::HTree_HTreeNode &proto,
+				const htree_node<T>& node) {
+	LOG_WARNING("serialization for non-HypedV HTree not supported")
+}
+
+template <>
+void htree_element<HypedValue>::getProtoHelper(
+				serialization::HTree_HTreeElem &proto,
+				const htree_element<HypedValue>& elem) {
+	const interval<HypedValue>& mykey = elem.key;
+	serialization::HTree_HTreeInterval* invl_proto = proto.mutable_key();
+	if (mykey.has_min) {
+		invl_proto->mutable_low()->CopyFrom(
+				(mykey.min.getTypedValue()).getProto());
+	}
+	if (mykey.has_max) {
+		invl_proto->mutable_high()->CopyFrom(
+				(mykey.max.getTypedValue()).getProto());
+	}
+	if (elem.child != nullptr) {
+		serialization::HTree_HTreeNode* node_proto = proto.mutable_child();
+		htree_node<HypedValue>::getProtoHelper(*node_proto, *(elem.child));
+				
+	} else if (elem.bkt != nullptr) {
+		for (const auto &invl : elem.bkt->get_dimensions()) {
+			serialization::HTree_HTreeInterval* bkt_proto = proto.add_bucket();
+			if (invl.has_min) {
+				bkt_proto->mutable_low()->CopyFrom(
+						(invl.min.getTypedValue()).getProto());
+			}
+			if (invl.has_max) {
+				bkt_proto->mutable_high()->CopyFrom(
+						(invl.max.getTypedValue()).getProto());
+			}
+		} // end for thru intervals
+	} // end bucket case
+	
+}
+
+template <>
+void htree_node<HypedValue>::getProtoHelper(
+    serialization::HTree_HTreeNode &proto, const htree_node<HypedValue>& node) {
+	for (const auto &elt : node.elements) {
+		serialization::HTree_HTreeElem* elem_proto= proto.add_elements();
+		htree_element<HypedValue>::getProtoHelper(*elem_proto, elt);
+	}
+
 }
 
 serialization::HTree HTree::getProto() const {
+
   serialization::HTree proto;
-/*
-  for (const auto &el : root_->elemnts) {
-	auto element = proto.add_
 
+  serialization::HTree_HTreeNode* node_proto = proto.mutable_root();
+  htree_node<HypedValue>::getProtoHelper(*node_proto, *root_);
 
-  }
-*/
-
-/*
-  proto.set_is_exact(is_exact_);
-
-  if (!num_tuples_.isNull()) {
-    proto.mutable_num_tuples()->CopyFrom(num_tuples_.getProto());
-  }
-
-  for (const auto &pair : column_stats_) {
-    auto entry = proto.add_column_stats();
-    entry->set_attr_id(pair.first);
-    const auto &stat = pair.second;
-    if (!stat.num_distinct_values.isNull()) {
-      entry->mutable_num_distinct_values()->CopyFrom(
-          stat.num_distinct_values.getProto());
-    }
-    if (!stat.min_value.isNull()) {
-      entry->mutable_min_value()->CopyFrom(
-          stat.min_value.getProto());
-    }
-    if (!stat.max_value.isNull()) {
-      entry->mutable_max_value()->CopyFrom(
-          stat.max_value.getProto());
-    }
-  }
-*/
   return proto;
+
 }
 
 }  // namespace quickstep
