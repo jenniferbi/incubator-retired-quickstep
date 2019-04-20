@@ -26,7 +26,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <limits>
 
 #include "histogram/HTree.hpp"
 #include "histogram/HypedValue.hpp"
@@ -36,6 +35,8 @@
 #include "catalog/CatalogRelationStatistics.hpp"
 #include "catalog/CatalogTypedefs.hpp"
 #include "catalog/IndexScheme.hpp"
+#include "types/TypeID.hpp"
+
 
 #ifdef QUICKSTEP_HAVE_LIBNUMA
 #include "catalog/NUMAPlacementScheme.hpp"
@@ -448,20 +449,39 @@ class CatalogRelation : public CatalogRelationSchema {
    */
   double getSelectivityForPredicate(const int num_attr,
         const attribute_id attr_id, 
-        const interval<HypedValue> &query_interval) const{
+        const interval<HypedValue> &query_interval,
+        const TypeID type_id) const{
     DCHECK(hasHistogram());
     
     vector< interval<HypedValue> > dimensions;
-    HypedValue zero = HypedValue{TypedValue{static_cast<int>(0)}};
+    HypedValue* zero = NULL;
+    switch (type_id) {
+      case kInt:
+        zero = new HypedValue(TypedValue{static_cast<int>(0)});
+        break;
+      case kLong:
+        zero = new HypedValue(TypedValue{static_cast<long>(0)});
+        break;
+      case kFloat:
+        zero = new HypedValue(TypedValue{static_cast<float>(0)});
+        break;
+      case kDouble:
+        zero = new HypedValue(TypedValue{static_cast<double>(0)});
+        break;
+      default:
+        FATAL_ERROR("TypedValue does not appear to be numeric");
+    }
+
 
     for (int i = 0; i < num_attr; ++i) {
       if (i == attr_id) {
-        dimensions.emplace_back(false, zero, false, zero);
+        dimensions.emplace_back(false, *zero, false, *zero);
       }
       else {
         dimensions.emplace_back(query_interval);
       }
     }
+    delete zero;
 
     const bucket<HypedValue> query(dimensions);
     double num_buckets = histogram_->getRoot()->estimateSelectivity(query);
