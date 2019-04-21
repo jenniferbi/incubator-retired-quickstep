@@ -363,6 +363,39 @@ void ExecuteBuildHistogram(const PtrVector<ParseString> &arguments,
   query_processor->saveCatalog();
 }
 
+void ExecuteShowHistogram(const PtrVector<ParseString> &arguments,
+                    		const tmb::client_id main_thread_client_id,
+							const tmb::client_id foreman_client_id,
+							MessageBus *bus,
+							StorageManager *storage_manager,
+							QueryProcessor *query_processor,
+							FILE *out) {
+  const CatalogDatabase &database = *query_processor->getDefaultDatabase();
+
+  std::unique_ptr<SqlParserWrapper> parser_wrapper(new SqlParserWrapper());
+  std::vector<std::reference_wrapper<const CatalogRelation>> relations;
+  if (arguments.empty()) {
+    relations.insert(relations.begin(), database.begin(), database.end());
+  } else {
+    for (const auto &rel_name : arguments) {
+      const CatalogRelation *rel = database.getRelationByName(rel_name.value());
+      if (rel == nullptr) {
+        THROW_SQL_ERROR_AT(&rel_name) << "Table does not exist";
+      } else {
+        relations.emplace_back(*rel);
+      }
+    }
+  }
+
+  // Analyze each relation in the database.
+  for (const CatalogRelation &relation : relations) {
+	  if (relation.hasHistogram()) {
+		  HTree *mutable_histogram = relation.getHistogramMutable();
+		  mutable_histogram->getRoot()->print(std::cout);
+	  }  
+  }// end for
+}
+
 void ExecuteAnalyze(const PtrVector<ParseString> &arguments,
                     const tmb::client_id main_thread_client_id,
                     const tmb::client_id foreman_client_id,
@@ -513,6 +546,13 @@ void executeCommand(const ParseStatement &statement,
 	
   } else if (command_str == kHistogramCommand) {
     ExecuteBuildHistogram(arguments,
+                   main_thread_client_id,
+                   foreman_client_id,
+                   bus,
+                   storage_manager,
+                   query_processor, out);
+  } else if (command_str == kShowHistogramCommand) {
+    ExecuteShowHistogram(arguments,
                    main_thread_client_id,
                    foreman_client_id,
                    bus,

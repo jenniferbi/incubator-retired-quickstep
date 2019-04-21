@@ -31,6 +31,7 @@ constexpr char kDescribeDatabaseCommand[] = "\\dt";
 constexpr char kDescribeTableCommand[] = "\\d";
 constexpr char kAnalyzeCommand[] = "\\analyze";
 constexpr char kHistogramCommand[] = "\\histogram";
+constexpr char kShowHistogramCommand[] = "\\showhist";
 
 /** @} */
 
