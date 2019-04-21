@@ -29,10 +29,12 @@ message HTree {
 	}
 	message HTreeNode {
 		repeated HTreeElem elements = 1;
+        optional uint32 level = 2;
 	}
 	message HTreeInterval {
 		optional TypedValue low = 1;
 		optional TypedValue high = 2;
 	}
 	optional HTreeNode root = 1;
+    optional int32 total_buckets = 2;
 }

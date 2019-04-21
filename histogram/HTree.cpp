@@ -46,23 +46,23 @@ template<>
 htree_element<HypedValue> htree_element<HypedValue>::ReconstructFromProto(
 					const serialization::HTree_HTreeElem &proto) {
 
-	interval<HypedValue>* key_ = nullptr;
+	interval<HypedValue> *key_ = nullptr;
 
 	if (proto.has_key()) {	
 		const serialization::HTree_HTreeInterval &key_proto = proto.key();
 		bool has_min_ = false, has_max_ = false;
-		HypedValue* max_ = nullptr, *min_ = nullptr;
+		HypedValue max_, min_;
 		if (key_proto.has_low()) {
 			has_min_ = true;
-			*min_ = HypedValue(
+			min_ = HypedValue(
 				TypedValue::ReconstructFromProto(key_proto.low()));
 		}
 		if (key_proto.has_high()) {
 			has_max_ = true;
-			*max_ = HypedValue(
+			max_ = HypedValue(
 				TypedValue::ReconstructFromProto(key_proto.high()));
 		}
-		*key_ = interval<HypedValue>(has_min_, *min_, has_max_, *max_);
+		key_ = new interval<HypedValue>(has_min_, min_, has_max_, max_);
 	}
 
 	if (proto.has_child()) {
@@ -78,18 +78,18 @@ htree_element<HypedValue> htree_element<HypedValue>::ReconstructFromProto(
 		const serialization::HTree_HTreeInterval &bkt_proto
 								 = proto.bucket(bucket_num);
 		bool has_min_ = false, has_max_ = false;
-		HypedValue* max_ = nullptr, *min_ = nullptr;
+		HypedValue max_, min_;
 		if (bkt_proto.has_low()) {
 			has_min_ = true;
-			*min_ = HypedValue(
+			min_ = HypedValue(
 				TypedValue::ReconstructFromProto(bkt_proto.low()));
 		}
 		if (bkt_proto.has_high()) {
 			has_max_ = true;
-			*max_ = HypedValue(
+			max_ = HypedValue(
 				TypedValue::ReconstructFromProto(bkt_proto.high()));
 		}
-		dims.emplace_back(has_min_, *min_, has_max_, *max_);
+		dims.emplace_back(has_min_, min_, has_max_, max_);
 	} // end for
 	bkt_entry = make_shared<bucket<HypedValue> >(dims);
 	return htree_element<HypedValue>(*key_, bkt_entry);
@@ -99,6 +99,11 @@ htree_element<HypedValue> htree_element<HypedValue>::ReconstructFromProto(
 template<>
 htree_node<HypedValue>* htree_node<HypedValue>::ReconstructFromProto(const 
 				serialization::HTree_HTreeNode &proto) {
+	unsigned int level;
+	if (proto.has_level()) {
+		level = proto.level();
+	}
+
 	vector<htree_element<HypedValue> > elts;
 	elts.reserve(proto.elements_size());	
 	for (int elt_num = 0; elt_num < proto.elements_size(); ++elt_num) {
@@ -106,7 +111,7 @@ htree_node<HypedValue>* htree_node<HypedValue>::ReconstructFromProto(const
 		elts.push_back(
 	    	htree_element<HypedValue>::ReconstructFromProto(elt));	
 	}
-	return new htree_node<HypedValue>(1, elts);
+	return new htree_node<HypedValue>(level, elts);
 }
 
 
@@ -115,6 +120,10 @@ HTree::HTree(
 
   if (proto.has_root()) {
     root_.reset(htree_node<HypedValue>::ReconstructFromProto(proto.root()));
+  }
+
+  if (proto.has_total_buckets()) {
+	total_buckets_ = proto.total_buckets();
   }
 
 }	
@@ -170,8 +179,11 @@ void htree_element<HypedValue>::getProtoHelper(
 template <>
 void htree_node<HypedValue>::getProtoHelper(
     serialization::HTree_HTreeNode &proto, const htree_node<HypedValue>& node) {
+
+	proto.set_level(node.level);
+
 	for (const auto &elt : node.elements) {
-		serialization::HTree_HTreeElem* elem_proto= proto.add_elements();
+		serialization::HTree_HTreeElem* elem_proto = proto.add_elements();
 		htree_element<HypedValue>::getProtoHelper(*elem_proto, elt);
 	}
 
@@ -181,8 +193,12 @@ serialization::HTree HTree::getProto() const {
 
   serialization::HTree proto;
 
-  serialization::HTree_HTreeNode* node_proto = proto.mutable_root();
-  htree_node<HypedValue>::getProtoHelper(*node_proto, *root_);
+  proto.set_total_buckets(total_buckets_);
+
+  if (root_ != nullptr) {
+      serialization::HTree_HTreeNode* node_proto = proto.mutable_root();
+      htree_node<HypedValue>::getProtoHelper(*node_proto, *root_);
+  }
 
   return proto;
 

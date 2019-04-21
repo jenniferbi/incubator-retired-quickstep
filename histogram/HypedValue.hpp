@@ -21,6 +21,8 @@ class HypedValue {
     TypedValue v;
 
 public:
+    HypedValue() : v(TypedValue()) {}
+
     HypedValue(TypedValue v) : v(v) {}
 
     HypedValue(const HypedValue &h) : v(h.v) {}
