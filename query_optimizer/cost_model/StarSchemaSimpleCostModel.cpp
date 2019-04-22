@@ -24,7 +24,6 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
-#include <limits>
 
 #include "catalog/CatalogRelation.hpp"
 #include "catalog/CatalogRelationStatistics.hpp"
@@ -328,8 +327,8 @@ std::size_t StarSchemaSimpleCostModel::estimateNumDistinctValues(
 double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
     const expressions::ExprId attribute_id,
     const physical::PhysicalPtr &physical_plan,
-    HypedValue min,
-    HypedValue max
+    const interval<HypedValue> &query_interval,
+    const TypeID type_id
   ) {
   DCHECK(E::ContainsExprId(physical_plan->getOutputAttributes(), attribute_id));
 
@@ -342,7 +341,11 @@ double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
         table_reference->relation();
       if (catalogRelation->hasHistogram()) {
         DLOG(INFO) << "Invoking getSelectivityForPredicate.";
-        return catalogRelation->getSelectivityForPredicate(rel_attr_id, min, max);
+        const int num_attr = table_reference->attribute_list().size();
+        return catalogRelation->getSelectivityForPredicate(num_attr, 
+                                                          rel_attr_id, 
+                                                          query_interval, 
+                                                          type_id);
       }
     }
     DLOG(INFO) << "Attribute gives kInvalidAttributeID on relation, use default 0.5";
@@ -497,58 +500,85 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                  E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->right(), &scalarLiteral)) {
                 E:: ExprId attr_id = attr->id();
                 TypedValue typed_value = scalarLiteral->value();
-                if (typed_value.getTypeID() != kInt
-                    && typed_value.getTypeID() != kLong
-                    && typed_value.getTypeID() != kFloat
-                    && typed_value.getTypeID() != kDouble) {
+                HypedValue* zero = NULL;
+                switch (typed_value.getTypeID()) {
+                  case kInt:
+                    zero = new HypedValue(TypedValue{static_cast<int>(0)});
+                    break;
+                  case kLong:
+                    zero = new HypedValue(TypedValue{static_cast<long>(0)});
+                    break;
+                  case kFloat:
+                    zero = new HypedValue(TypedValue{static_cast<float>(0)});
+                    break;
+                  case kDouble:
+                    zero = new HypedValue(TypedValue{static_cast<double>(0)});
+                    break;
+                  default:
                     FATAL_ERROR("TypedValue does not appear to be numeric");
                 }
+                
                 switch (comparison_type) {
                   case ComparisonID::kLess:
                   case ComparisonID::kLessOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::lowest())}},
-                      HypedValue(typed_value));
+                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child,
+                      {false, *zero, true, HypedValue(typed_value)},
+                      typed_value.getTypeID());
                     return selectivity;
                   }
                   case ComparisonID::kGreater: {
                     double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      HypedValue(typed_value), 
-                      HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::max())}});
+                      {true, HypedValue(typed_value), false, *zero},
+                      typed_value.getTypeID());
                     return selectivity;
                   }
                   default:
                     return 1 - 1.0 / std::max(child_num_distinct_values, static_cast<std::size_t>(1u));                    
                 }
+                delete zero;
               }
               else {
                 E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->right(), &attr);
                 E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->left(), &scalarLiteral);
                 E:: ExprId attr_id = attr->id();
                 TypedValue typed_value = scalarLiteral->value();
-                if (typed_value.getTypeID() != kInt
-                    && typed_value.getTypeID() != kLong
-                    && typed_value.getTypeID() != kFloat
-                    && typed_value.getTypeID() != kDouble) {
+                HypedValue* zero = NULL;
+
+                switch (typed_value.getTypeID()) {
+                  case kInt:
+                    zero = new HypedValue(TypedValue{static_cast<int>(0)});
+                    break;
+                  case kLong:
+                    zero = new HypedValue(TypedValue{static_cast<long>(0)});
+                    break;
+                  case kFloat:
+                    zero = new HypedValue(TypedValue{static_cast<float>(0)});
+                    break;
+                  case kDouble:
+                    zero = new HypedValue(TypedValue{static_cast<double>(0)});
+                    break;
+                  default:
                     FATAL_ERROR("TypedValue does not appear to be numeric");
                 }
+
                 switch (comparison_type) {
                   case ComparisonID::kLess:
                   case ComparisonID::kLessOrEqual: {
                     double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      HypedValue(typed_value), 
-                      HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::max())}});
+                      {true, HypedValue(typed_value), false, *zero},
+                      typed_value.getTypeID());
                     return selectivity;
                   }
                   case ComparisonID::kGreater: {
-                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      HypedValue{TypedValue{static_cast<double>(std::numeric_limits<double>::lowest())}},
-                      HypedValue(typed_value));
+                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child,
+                      {false, *zero, true, HypedValue(typed_value)},
+                      typed_value.getTypeID());
                     return selectivity;
                   }
                   default:
                     return 1 - 1.0 / std::max(child_num_distinct_values, static_cast<std::size_t>(1u));                    
                 }
+                delete zero;
               }
               // return 1.0 / std::max(std::min(child_num_distinct_values / 100.0, 10.0), 2.0);
             }

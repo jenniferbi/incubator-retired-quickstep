@@ -44,6 +44,7 @@
 #include "types/TypedValue.hpp"
 #include "utility/Macros.hpp"
 #include "histogram/HTree.hpp"
+#include "types/TypeID.hpp"
 
 
 namespace quickstep {
@@ -98,15 +99,15 @@ class StarSchemaSimpleCostModel : public CostModel {
    * @brief Estimate the selectivtiy of a range predicate using histograms
    * @param attribute_id The expression id of the target attribute
    * @param physical_plan The physical plan of the attributes's relation
-   * @param min The min of the range
-   * @param max The max of the range
+   * @param query_interval The inverval of the query
+   * @param type_id The type of the TypedValue literal under comparison
    * @return The estimated selecitivty over the base table for the attribute using histograms
   */
   double estimateSelectivityUsingHistogram(
     const expressions::ExprId attribute_id,
     const physical::PhysicalPtr &physical_plan,
-    HypedValue min,
-    HypedValue max
+    const interval<HypedValue> &query_interval,
+    const TypeID type_id
   );
 
   /**
