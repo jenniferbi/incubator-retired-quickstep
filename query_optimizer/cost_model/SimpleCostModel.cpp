@@ -40,6 +40,7 @@
 #include "query_optimizer/physical/TopLevelPlan.hpp"
 #include "query_optimizer/physical/UnionAll.hpp"
 #include "query_optimizer/physical/WindowAggregate.hpp"
+#include "query_optimizer/physical/Sample.hpp"
 
 #include "glog/logging.h"
 
@@ -94,6 +95,10 @@ std::size_t SimpleCostModel::estimateCardinality(
     case P::PhysicalType::kUnionAll:
       return estimateCardinalityForUnionAll(
           std::static_pointer_cast<const P::UnionAll>(physical_plan));
+	case P::PhysicalType::kSample: {
+	  const P::SamplePtr sample_plan = std::static_pointer_cast<const P::Sample>(physical_plan);
+	  return sample_plan->percentage() / 100 * estimateCardinality(sample_plan->input());
+	}
     default:
       throw UnsupportedPhysicalPlan(physical_plan);
   }

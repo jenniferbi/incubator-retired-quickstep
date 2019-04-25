@@ -50,6 +50,7 @@
 #include "query_optimizer/physical/PatternMatcher.hpp"
 #include "query_optimizer/physical/Physical.hpp"
 #include "query_optimizer/physical/PhysicalType.hpp"
+#include "query_optimizer/physical/Sample.hpp"
 #include "query_optimizer/physical/Selection.hpp"
 #include "query_optimizer/physical/SharedSubplanReference.hpp"
 #include "query_optimizer/physical/Sort.hpp"
@@ -125,6 +126,10 @@ std::size_t StarSchemaSimpleCostModel::estimateCardinality(
     case P::PhysicalType::kUnionAll:
       return estimateCardinalityForUnionAll(
           std::static_pointer_cast<const P::UnionAll>(physical_plan));
+	case P::PhysicalType::kSample: {
+	  const P::SamplePtr sample_plan = std::static_pointer_cast<const P::Sample>(physical_plan);
+	  return sample_plan->percentage() / 100 * estimateCardinality(sample_plan->input());
+	}
     default:
       throw UnsupportedPhysicalPlan(physical_plan);
   }
