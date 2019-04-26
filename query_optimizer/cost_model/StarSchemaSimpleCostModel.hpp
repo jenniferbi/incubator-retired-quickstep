@@ -96,18 +96,18 @@ class StarSchemaSimpleCostModel : public CostModel {
 
 
   /**
-   * @brief Estimate the selectivtiy of a range predicate using histograms
-   * @param attribute_id The expression id of the target attribute
+   * @brief Estimate the selectivtiy of a list of range predicate on same table using histograms
+   * @param attribute_ids The expression id of the target attribute
    * @param physical_plan The physical plan of the attributes's relation
-   * @param query_interval The inverval of the query
-   * @param type_id The type of the TypedValue literal under comparison
-   * @return The estimated selecitivty over the base table for the attribute using histograms
+   * @param query_intervals The inverval of the query
+   * @param type_ids The type of the TypedValue literal under comparison
+   * @return The estimated selecitivty over the base table for the attributes using histograms
   */
   double estimateSelectivityUsingHistogram(
-    const expressions::ExprId attribute_id,
+    const std::vector<expressions::ExprId> &attribute_ids,
     const physical::PhysicalPtr &physical_plan,
-    const interval<HypedValue> &query_interval,
-    const TypeID type_id
+    const std::vector<interval<HypedValue>> &query_intervals,
+    const std::vector<TypeID> &type_ids
   );
 
   /**

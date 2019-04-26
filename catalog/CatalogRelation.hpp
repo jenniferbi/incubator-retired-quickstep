@@ -26,6 +26,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "histogram/HTree.hpp"
 #include "histogram/HypedValue.hpp"
@@ -448,14 +449,14 @@ class CatalogRelation : public CatalogRelationSchema {
    * @return The selectivity of a range predicate on the attribute specified
    */
   double getSelectivityForPredicate(const int num_attr,
-        const attribute_id attr_id, 
-        const interval<HypedValue> &query_interval,
-        const TypeID type_id) const{
+        const std::vector<attribute_id> attr_ids, 
+        const std::vector<interval<HypedValue>> &query_intervals,
+        const std::vector<TypeID> type_ids) const{
     DCHECK(hasHistogram());
     
     vector< interval<HypedValue> > dimensions;
     HypedValue* zero = NULL;
-    switch (type_id) {
+    switch (type_ids[0]) {
       case kInt:
         zero = new HypedValue(TypedValue{static_cast<int>(0)});
         break;
@@ -474,11 +475,11 @@ class CatalogRelation : public CatalogRelationSchema {
 
 
     for (int i = 0; i < num_attr; ++i) {
-      if (i == attr_id) {
-        dimensions.emplace_back(false, *zero, false, *zero);
+      if (std::find(attr_ids.begin(), attr_ids.end(), i) != attr_ids.end()) {
+        dimensions.emplace_back(query_intervals[i]);
       }
       else {
-        dimensions.emplace_back(query_interval);
+        dimensions.emplace_back(false, *zero, false, *zero);
       }
     }
     delete zero;

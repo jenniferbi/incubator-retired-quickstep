@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 #include "catalog/CatalogRelation.hpp"
 #include "catalog/CatalogRelationStatistics.hpp"
@@ -325,27 +326,37 @@ std::size_t StarSchemaSimpleCostModel::estimateNumDistinctValues(
 
 
 double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
-    const expressions::ExprId attribute_id,
+    const std::vector<expressions::ExprId> &attribute_ids,
     const physical::PhysicalPtr &physical_plan,
-    const interval<HypedValue> &query_interval,
-    const TypeID type_id
+    const std::vector<interval<HypedValue>> &query_intervals,
+    const std::vector<TypeID> &type_ids
   ) {
-  DCHECK(E::ContainsExprId(physical_plan->getOutputAttributes(), attribute_id));
-
   P::TableReferencePtr table_reference;
+  bool attributesValid = true;
   if (P::SomeTableReference::MatchesWithConditionalCast(physical_plan, &table_reference)) {
-    const auto rel_attr_id =
-      findCatalogRelationAttributeId(table_reference, attribute_id);
-    if (rel_attr_id != kInvalidAttributeID) {
+
+    std::vector<attribute_id> rel_attr_id_list;
+    for (auto it = attribute_ids.begin(); it != attribute_ids.end(); ++it) {
+      DCHECK(E::ContainsExprId(physical_plan->getOutputAttributes(), *it));
+      const auto rel_attr_id =
+        findCatalogRelationAttributeId(table_reference, *it);
+      if (rel_attr_id == kInvalidAttributeID) {
+        attributesValid = false;
+        break;
+      }
+      rel_attr_id_list.push_back(rel_attr_id);
+    }
+    
+    if (attributesValid) {
       const CatalogRelation* catalogRelation =
         table_reference->relation();
       if (catalogRelation->hasHistogram()) {
         DLOG(INFO) << "Invoking getSelectivityForPredicate.";
         const int num_attr = table_reference->attribute_list().size();
         return catalogRelation->getSelectivityForPredicate(num_attr, 
-                                                          rel_attr_id, 
-                                                          query_interval, 
-                                                          type_id);
+                                                          rel_attr_id_list, 
+                                                          query_intervals, 
+                                                          type_ids);
       }
     }
     DLOG(INFO) << "Attribute gives kInvalidAttributeID on relation, use default 0.5";
@@ -523,42 +534,42 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                     double selectivity = 0.0;
                     if (typed_value.getTypeID() == kInt){
                       int upper = typed_value.getLiteral<int>() - 1;
-                      selectivity = estimateSelectivityUsingHistogram(attr_id, child,
-                      {false, *zero, true, HypedValue(TypedValue{upper})},
-                      typed_value.getTypeID());
+                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                      {{false, *zero, true, HypedValue(TypedValue{upper})}},
+                      {typed_value.getTypeID()});
                     }
                     else {
-                      selectivity = estimateSelectivityUsingHistogram(attr_id, child,
-                      {false, *zero, true, HypedValue(typed_value)},
-                      typed_value.getTypeID());
+                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                      {{false, *zero, true, HypedValue(typed_value)}},
+                      {typed_value.getTypeID()});
                     }
                     return selectivity;
                   }
                   case ComparisonID::kLessOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child,
-                      {false, *zero, true, HypedValue(typed_value)},
-                      typed_value.getTypeID());
+                    double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                      {{false, *zero, true, HypedValue(typed_value)}},
+                      {typed_value.getTypeID()});
                     return selectivity;
                   }
                   case ComparisonID::kGreater: {
                     double selectivity = 0.0;
                     if (typed_value.getTypeID() == kInt) {
                       int lower = typed_value.getLiteral<int>() + 1;
-                      selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      {true, HypedValue(TypedValue{lower}), false, *zero},
-                      typed_value.getTypeID());
+                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                      {{true, HypedValue(TypedValue{lower}), false, *zero}},
+                      {typed_value.getTypeID()});
                     }
                     else {
-                      selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      {true, HypedValue(typed_value), false, *zero},
-                      typed_value.getTypeID());
+                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                      {{true, HypedValue(typed_value), false, *zero}},
+                      {typed_value.getTypeID()});
                     }
                     return selectivity;
                   }
                   case ComparisonID::kGreaterOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      {true, HypedValue(typed_value), false, *zero},
-                      typed_value.getTypeID());
+                    double selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                      {{true, HypedValue(typed_value), false, *zero}},
+                      {typed_value.getTypeID()});
                     return selectivity;
                   }
                   default:
@@ -596,42 +607,42 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                     double selectivity = 0.0;
                     if (typed_value.getTypeID() == kInt) {
                       int lower = typed_value.getLiteral<int>() + 1;
-                      selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      {true, HypedValue(TypedValue{lower}), false, *zero},
-                      typed_value.getTypeID());
+                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                      {{true, HypedValue(TypedValue{lower}), false, *zero}},
+                      {typed_value.getTypeID()});
                     }
                     else {
-                      selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      {true, HypedValue(typed_value), false, *zero},
-                      typed_value.getTypeID());
+                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                      {{true, HypedValue(typed_value), false, *zero}},
+                      {typed_value.getTypeID()});
                     }
                     return selectivity;
                   }
                   case ComparisonID::kLessOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child, 
-                      {true, HypedValue(typed_value), false, *zero},
-                      typed_value.getTypeID());
+                    double selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                      {{true, HypedValue(typed_value), false, *zero}},
+                      {typed_value.getTypeID()});
                     return selectivity;
                   }
                   case ComparisonID::kGreater: {
                     double selectivity = 0.0;
                     if (typed_value.getTypeID() == kInt){
                       int upper = typed_value.getLiteral<int>() - 1;
-                      selectivity = estimateSelectivityUsingHistogram(attr_id, child,
-                      {false, *zero, true, HypedValue(TypedValue{upper})},
-                      typed_value.getTypeID());
+                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                      {{false, *zero, true, HypedValue(TypedValue{upper})}},
+                      {typed_value.getTypeID()});
                     }
                     else {
-                      selectivity = estimateSelectivityUsingHistogram(attr_id, child,
-                      {false, *zero, true, HypedValue(typed_value)},
-                      typed_value.getTypeID());
+                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                      {{false, *zero, true, HypedValue(typed_value)}},
+                      {typed_value.getTypeID()});
                     }
                     return selectivity;
                   }
                   case ComparisonID::kGreaterOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram(attr_id, child,
-                      {false, *zero, true, HypedValue(typed_value)},
-                      typed_value.getTypeID());
+                    double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                      {{false, *zero, true, HypedValue(typed_value)}},
+                      {typed_value.getTypeID()});
                     return selectivity;
                   }
                   default:
@@ -647,15 +658,86 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
       }
       return 0.5;
     }
+
     case E::ExpressionType::kLogicalAnd: {
       const E::LogicalAndPtr &logical_and =
           std::static_pointer_cast<const E::LogicalAnd>(filter_predicate);
-      double selectivity = 1.0;
+      double selectivity = 0.5;
+
+      // Case 1: Same table attributes
+          // Case 1.1: Same attribute, pass a new range query
+          // Case 1.2: Different attributes, pass a multi-dimensional query
+      // Case 2: Different table attributes: original default, return min
+      bool sameTable = true;
+      std::string tableName = "";
+      E::AttributeReferencePtr attr;
+      std::unordered_map<E::ExprId, std::vector<interval<HypedValue>>> attrQueryInterval;
+
       for (const auto &predicate : logical_and->operands()) {
-        selectivity = std::min(selectivity, estimateSelectivityForPredicate(predicate, physical_plan));
+        switch (predicate->getExpressionType()) {
+          case E::ExpressionType::kComparisonExpression: {
+            const E::ComparisonExpressionPtr &comparison_expression =
+            std::static_pointer_cast<const E::ComparisonExpression>(predicate);
+            expressions::ScalarLiteralPtr scalarLiteral;
+
+            if (E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->left(), &attr) &&
+               E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->right(), &scalarLiteral)){
+              if (tableName != "" && attr->relation_name() != tableName) {
+                sameTable = false;
+              }
+              //updateQueryIntervalForAttr();
+              tableName = attr->relation_name();
+            }
+            else if (E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->right(), &attr) &&
+               E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->left(), &scalarLiteral)) {
+              if (tableName != "" && attr->relation_name() != tableName) {
+                sameTable = false;
+              }
+              //updateQueryIntervalForAttr();
+              tableName = attr->relation_name();
+            }
+            else {
+              sameTable = false;
+            }
+            break;
+          }
+          default: {
+            sameTable = false;
+            break;
+          }
+        }
+        if (!sameTable){
+          break;
+        }
+      }      
+
+      if (!(physical_plan->children().size() > 0 && 
+        E::ContainsExprId(physical_plan->children()[0]->getOutputAttributes(), attr->id()))) {
+        sameTable = false;
+      }
+
+      if (sameTable) {
+        // All attributes refer to the same table
+        // Group predicates by attribute and search in histogram
+        // std::vector<E:ExprId> attrList;
+        // std::vector<interval<HypedValue> queryIntervalList;
+        // for (auto it : attrQueryInterval) {
+        //   attrList.push_back(it.first);
+        //   queryIntervalList.push_back(it.second);
+        // }
+        // selectivity = estimateSelectivityUsingHistogram(attrList, physical_plan->children[0],
+        //               queryIntervalList);
+
+      }
+      else {
+        for (const auto &predicate : logical_and->operands()) {
+          selectivity = std::min(selectivity, estimateSelectivityForPredicate(predicate, physical_plan));
+        }
       }
       return selectivity;
     }
+
+
     case E::ExpressionType::kLogicalOr: {
       const E::LogicalOrPtr &logical_or =
           std::static_pointer_cast<const E::LogicalOr>(filter_predicate);
@@ -670,6 +752,12 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
   }
   return 1.0;
 }
+
+
+void updateQueryIntervalForAttr(){
+
+}
+
 
 std::size_t StarSchemaSimpleCostModel::getNumDistinctValues(
     const E::ExprId attribute_id,
