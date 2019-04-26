@@ -328,8 +328,7 @@ std::size_t StarSchemaSimpleCostModel::estimateNumDistinctValues(
 double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
     const std::vector<expressions::ExprId> &attribute_ids,
     const physical::PhysicalPtr &physical_plan,
-    const std::vector<interval<HypedValue>> &query_intervals,
-    const std::vector<TypeID> &type_ids
+    const std::vector<interval<HypedValue>> &query_intervals
   ) {
   P::TableReferencePtr table_reference;
   bool attributesValid = true;
@@ -348,6 +347,12 @@ double StarSchemaSimpleCostModel::estimateSelectivityUsingHistogram(
     }
     
     if (attributesValid) {
+      std::vector<TypeID> type_ids;
+      for (auto t = table_reference->attribute_list().begin(); 
+            t != table_reference->attribute_list().end(); ++t) {
+        type_ids.push_back((*t)->getValueType().getTypeID());
+      }
+
       const CatalogRelation* catalogRelation =
         table_reference->relation();
       if (catalogRelation->hasHistogram()) {
@@ -535,20 +540,17 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                     if (typed_value.getTypeID() == kInt){
                       int upper = typed_value.getLiteral<int>() - 1;
                       selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(TypedValue{upper})}},
-                      {typed_value.getTypeID()});
+                      {{false, *zero, true, HypedValue(TypedValue{upper})}});
                     }
                     else {
                       selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(typed_value)}},
-                      {typed_value.getTypeID()});
+                      {{false, *zero, true, HypedValue(typed_value)}});
                     }
                     return selectivity;
                   }
                   case ComparisonID::kLessOrEqual: {
                     double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(typed_value)}},
-                      {typed_value.getTypeID()});
+                      {{false, *zero, true, HypedValue(typed_value)}});
                     return selectivity;
                   }
                   case ComparisonID::kGreater: {
@@ -556,20 +558,17 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                     if (typed_value.getTypeID() == kInt) {
                       int lower = typed_value.getLiteral<int>() + 1;
                       selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(TypedValue{lower}), false, *zero}},
-                      {typed_value.getTypeID()});
+                      {{true, HypedValue(TypedValue{lower}), false, *zero}});
                     }
                     else {
                       selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(typed_value), false, *zero}},
-                      {typed_value.getTypeID()});
+                      {{true, HypedValue(typed_value), false, *zero}});
                     }
                     return selectivity;
                   }
                   case ComparisonID::kGreaterOrEqual: {
                     double selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(typed_value), false, *zero}},
-                      {typed_value.getTypeID()});
+                      {{true, HypedValue(typed_value), false, *zero}});
                     return selectivity;
                   }
                   default:
@@ -608,20 +607,17 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                     if (typed_value.getTypeID() == kInt) {
                       int lower = typed_value.getLiteral<int>() + 1;
                       selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(TypedValue{lower}), false, *zero}},
-                      {typed_value.getTypeID()});
+                      {{true, HypedValue(TypedValue{lower}), false, *zero}});
                     }
                     else {
                       selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(typed_value), false, *zero}},
-                      {typed_value.getTypeID()});
+                      {{true, HypedValue(typed_value), false, *zero}});
                     }
                     return selectivity;
                   }
                   case ComparisonID::kLessOrEqual: {
                     double selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(typed_value), false, *zero}},
-                      {typed_value.getTypeID()});
+                      {{true, HypedValue(typed_value), false, *zero}});
                     return selectivity;
                   }
                   case ComparisonID::kGreater: {
@@ -629,20 +625,17 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
                     if (typed_value.getTypeID() == kInt){
                       int upper = typed_value.getLiteral<int>() - 1;
                       selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(TypedValue{upper})}},
-                      {typed_value.getTypeID()});
+                      {{false, *zero, true, HypedValue(TypedValue{upper})}});
                     }
                     else {
                       selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(typed_value)}},
-                      {typed_value.getTypeID()});
+                      {{false, *zero, true, HypedValue(typed_value)}});
                     }
                     return selectivity;
                   }
                   case ComparisonID::kGreaterOrEqual: {
                     double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(typed_value)}},
-                      {typed_value.getTypeID()});
+                      {{false, *zero, true, HypedValue(typed_value)}});
                     return selectivity;
                   }
                   default:

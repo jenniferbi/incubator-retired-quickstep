@@ -106,8 +106,7 @@ class StarSchemaSimpleCostModel : public CostModel {
   double estimateSelectivityUsingHistogram(
     const std::vector<expressions::ExprId> &attribute_ids,
     const physical::PhysicalPtr &physical_plan,
-    const std::vector<interval<HypedValue>> &query_intervals,
-    const std::vector<TypeID> &type_ids
+    const std::vector<interval<HypedValue>> &query_intervals
   );
 
   /**

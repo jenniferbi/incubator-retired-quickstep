@@ -455,34 +455,34 @@ class CatalogRelation : public CatalogRelationSchema {
     DCHECK(hasHistogram());
     
     vector< interval<HypedValue> > dimensions;
-    HypedValue* zero = NULL;
-    switch (type_ids[0]) {
-      case kInt:
-        zero = new HypedValue(TypedValue{static_cast<int>(0)});
-        break;
-      case kLong:
-        zero = new HypedValue(TypedValue{static_cast<long>(0)});
-        break;
-      case kFloat:
-        zero = new HypedValue(TypedValue{static_cast<float>(0)});
-        break;
-      case kDouble:
-        zero = new HypedValue(TypedValue{static_cast<double>(0)});
-        break;
-      default:
-        FATAL_ERROR("TypedValue does not appear to be numeric");
-    }
-
 
     for (int i = 0; i < num_attr; ++i) {
       if (std::find(attr_ids.begin(), attr_ids.end(), i) != attr_ids.end()) {
         dimensions.emplace_back(query_intervals[i]);
       }
       else {
+        HypedValue* zero = NULL;
+        switch (type_ids[i]) {
+          case kInt:
+            zero = new HypedValue(TypedValue{static_cast<int>(0)});
+            break;
+          case kLong:
+            zero = new HypedValue(TypedValue{static_cast<long>(0)});
+            break;
+          case kFloat:
+            zero = new HypedValue(TypedValue{static_cast<float>(0)});
+            break;
+          case kDouble:
+            zero = new HypedValue(TypedValue{static_cast<double>(0)});
+            break;
+          default:
+            FATAL_ERROR("TypedValue does not appear to be numeric");
+        }
         dimensions.emplace_back(false, *zero, false, *zero);
+        delete zero;
+
       }
     }
-    delete zero;
 
     const bucket<HypedValue> query(dimensions);
     double num_buckets = histogram_->getRoot()->estimateSelectivity(query);
