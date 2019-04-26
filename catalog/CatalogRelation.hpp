@@ -474,7 +474,7 @@ class CatalogRelation : public CatalogRelationSchema {
 
 
     for (int i = 0; i < num_attr; ++i) {
-      if (i == attr_id) {
+      if (i != attr_id) {
         dimensions.emplace_back(false, *zero, false, *zero);
       }
       else {
