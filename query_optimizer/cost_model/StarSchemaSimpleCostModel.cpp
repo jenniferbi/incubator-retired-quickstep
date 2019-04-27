@@ -664,7 +664,7 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
       bool sameTable = true;
       std::string tableName = "";
       E::AttributeReferencePtr attr;
-      std::unordered_map<E::ExprId, std::vector<interval<HypedValue>>> attrQueryInterval;
+      std::unordered_map<E::ExprId, interval<HypedValue>> attrQueryInterval;
 
       for (const auto &predicate : logical_and->operands()) {
         switch (predicate->getExpressionType()) {
@@ -672,13 +672,82 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
             const E::ComparisonExpressionPtr &comparison_expression =
             std::static_pointer_cast<const E::ComparisonExpression>(predicate);
             expressions::ScalarLiteralPtr scalarLiteral;
+            const ComparisonID comparison_type = comparison_expression->comparison().getComparisonID();
 
             if (E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->left(), &attr) &&
                E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->right(), &scalarLiteral)){
               if (tableName != "" && attr->relation_name() != tableName) {
                 sameTable = false;
               }
-              //updateQueryIntervalForAttr();
+
+              E:: ExprId attr_id = attr->id();
+              TypedValue typed_value = scalarLiteral->value();
+              HypedValue* zero = NULL;
+              switch (typed_value.getTypeID()) {
+                case kInt:
+                  zero = new HypedValue(TypedValue{static_cast<int>(0)});
+                  break;
+                case kLong:
+                  zero = new HypedValue(TypedValue{static_cast<long>(0)});
+                  break;
+                case kFloat:
+                  zero = new HypedValue(TypedValue{static_cast<float>(0)});
+                  break;
+                case kDouble:
+                  zero = new HypedValue(TypedValue{static_cast<double>(0)});
+                  break;
+                default:
+                  FATAL_ERROR("TypedValue does not appear to be numeric");
+              }
+              bool hasMin = false;
+              bool hasMax = false;
+              HypedValue min = *zero;
+              HypedValue max = *zero;
+
+              switch (comparison_type) {
+                case ComparisonID::kEqual: {
+                  hasMin = true; hasMax = true;
+                  min = HypedValue(typed_value); max = HypedValue(typed_value);
+                  break;
+                }
+                case ComparisonID::kLess: {
+                  if (typed_value.getTypeID() == kInt){
+                    hasMax = true;
+                    max = HypedValue(TypedValue{typed_value.getLiteral<int>() - 1});
+                  }
+                  else {
+                    hasMax = true;
+                    max = HypedValue(typed_value);
+                  }
+                  break;
+                }
+                case ComparisonID::kLessOrEqual: {
+                  hasMax = true;
+                  max = HypedValue(typed_value);
+                  break;
+                }
+                case ComparisonID::kGreater: {
+                  if (typed_value.getTypeID() == kInt) {
+                    hasMin = true;
+                    min = HypedValue(TypedValue{typed_value.getLiteral<int>() + 1});
+                  }
+                  else {
+                    hasMin = true;
+                    min = HypedValue(typed_value);
+                  }
+                  break;
+                }
+                case ComparisonID::kGreaterOrEqual: {
+                  hasMin = true;
+                  min = HypedValue(typed_value);
+                  break;
+                }
+                default:
+                  break;                    
+              }
+              delete zero;
+
+              updateQueryIntervalForAttr(attrQueryInterval, attr_id, hasMin, min, hasMax, max);
               tableName = attr->relation_name();
             }
             else if (E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->right(), &attr) &&
@@ -686,7 +755,75 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
               if (tableName != "" && attr->relation_name() != tableName) {
                 sameTable = false;
               }
-              //updateQueryIntervalForAttr();
+
+              E:: ExprId attr_id = attr->id();
+              TypedValue typed_value = scalarLiteral->value();
+              HypedValue* zero = NULL;
+              switch (typed_value.getTypeID()) {
+                case kInt:
+                  zero = new HypedValue(TypedValue{static_cast<int>(0)});
+                  break;
+                case kLong:
+                  zero = new HypedValue(TypedValue{static_cast<long>(0)});
+                  break;
+                case kFloat:
+                  zero = new HypedValue(TypedValue{static_cast<float>(0)});
+                  break;
+                case kDouble:
+                  zero = new HypedValue(TypedValue{static_cast<double>(0)});
+                  break;
+                default:
+                  FATAL_ERROR("TypedValue does not appear to be numeric");
+              }
+              bool hasMin = false;
+              bool hasMax = false;
+              HypedValue min = *zero;
+              HypedValue max = *zero;
+
+              switch (comparison_type) {
+                case ComparisonID::kEqual: {
+                  hasMin = true; hasMax = true;
+                  min = HypedValue(typed_value); max = HypedValue(typed_value);
+                  break;
+                }
+                case ComparisonID::kLess: {
+                  if (typed_value.getTypeID() == kInt) {
+                    hasMin = true;
+                    min = HypedValue(TypedValue{typed_value.getLiteral<int>() + 1});
+                  }
+                  else {
+                    hasMin = true;
+                    min = HypedValue(typed_value);
+                  }
+                  break;
+                }
+                case ComparisonID::kLessOrEqual: {
+                  hasMin = true;
+                  min = HypedValue(typed_value);
+                  break;
+                }
+                case ComparisonID::kGreater: {
+                  if (typed_value.getTypeID() == kInt){
+                    hasMax = true;
+                    max = HypedValue(TypedValue{typed_value.getLiteral<int>() - 1});
+                  }
+                  else {
+                    hasMax = true;
+                    max = HypedValue(typed_value);
+                  }
+                  break;
+                }
+                case ComparisonID::kGreaterOrEqual: {
+                  hasMax = true;
+                  max = HypedValue(typed_value);
+                  break;
+                }
+                default:
+                  break;                    
+              }
+              delete zero;
+
+              updateQueryIntervalForAttr(attrQueryInterval, attr_id, hasMin, min, hasMax, max);
               tableName = attr->relation_name();
             }
             else {
@@ -712,15 +849,14 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
       if (sameTable) {
         // All attributes refer to the same table
         // Group predicates by attribute and search in histogram
-        // std::vector<E:ExprId> attrList;
-        // std::vector<interval<HypedValue> queryIntervalList;
-        // for (auto it : attrQueryInterval) {
-        //   attrList.push_back(it.first);
-        //   queryIntervalList.push_back(it.second);
-        // }
-        // selectivity = estimateSelectivityUsingHistogram(attrList, physical_plan->children[0],
-        //               queryIntervalList);
-
+        std::vector<E::ExprId> attrList;
+        std::vector<interval<HypedValue>> queryIntervalList;
+        for (auto it : attrQueryInterval) {
+          attrList.push_back(it.first);
+          queryIntervalList.push_back(it.second);
+        }
+        selectivity = estimateSelectivityUsingHistogram(attrList, physical_plan->children()[0],
+                      queryIntervalList);
       }
       else {
         for (const auto &predicate : logical_and->operands()) {
@@ -747,8 +883,27 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
 }
 
 
-void updateQueryIntervalForAttr(){
+// HypedValue assignTypedZero(HypedValue *zero, TypeID id) {
 
+// }
+
+void StarSchemaSimpleCostModel::updateQueryIntervalForAttr(std::unordered_map<E::ExprId, interval<HypedValue>> &attrIntervals, 
+                                attribute_id attr_id, bool hasMin, HypedValue min, bool hasMax, HypedValue max){
+  if (attrIntervals.find(attr_id) != attrIntervals.end()) {
+    if ((hasMin && !(attrIntervals.at(attr_id).has_min)) || 
+        (hasMin && attrIntervals.at(attr_id).has_min && attrIntervals.at(attr_id).min < min)){
+      attrIntervals.at(attr_id).has_min = true;
+      attrIntervals.at(attr_id).min = min;
+    }
+    if ((hasMax && !(attrIntervals.at(attr_id).has_max)) ||
+        (hasMax && attrIntervals.at(attr_id).has_max && attrIntervals.at(attr_id).max > max)){
+      attrIntervals.at(attr_id).has_max = true;
+      attrIntervals.at(attr_id).max = max;
+    }
+  }
+  else {
+    attrIntervals.insert({attr_id, {hasMin, min, hasMax, max}});
+  }
 }
 
 

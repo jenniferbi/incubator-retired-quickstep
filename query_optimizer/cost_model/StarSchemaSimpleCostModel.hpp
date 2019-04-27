@@ -255,6 +255,11 @@ class StarSchemaSimpleCostModel : public CostModel {
       const expressions::PredicatePtr &filter_predicate,
       const physical::PhysicalPtr &physical_plan);
 
+  void updateQueryIntervalForAttr(
+      std::unordered_map<expressions::ExprId, interval<HypedValue>> &attrIntervals, 
+      attribute_id attr_id, 
+      bool hasMin, HypedValue min, bool hasMax, HypedValue max);
+
   const std::vector<physical::PhysicalPtr> &shared_subplans_;
 
   // Get the number of distinct values of an attribute in the table reference.

@@ -457,8 +457,10 @@ class CatalogRelation : public CatalogRelationSchema {
     vector< interval<HypedValue> > dimensions;
 
     for (int i = 0; i < num_attr; ++i) {
-      if (std::find(attr_ids.begin(), attr_ids.end(), i) != attr_ids.end()) {
-        dimensions.emplace_back(query_intervals[i]);
+      auto it = std::find(attr_ids.begin(), attr_ids.end(), i);
+      if (it != attr_ids.end()) {
+        int index = std::distance(attr_ids.begin(), it);
+        dimensions.emplace_back(query_intervals[index]);
       }
       else {
         HypedValue* zero = NULL;
