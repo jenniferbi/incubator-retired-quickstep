@@ -502,149 +502,155 @@ double StarSchemaSimpleCostModel::estimateSelectivityForPredicate(
            E::SomeScalarLiteral::Matches(comparison_expression->left()))) {
         for (const auto &child : physical_plan->children()) {
           if (E::ContainsExprId(child->getOutputAttributes(), attr->id())) {
-            const std::size_t child_num_distinct_values = estimateNumDistinctValues(attr->id(), child);
-            if (comparison_expression->isEqualityComparisonPredicate()) {
-              return 1.0 / std::max(child_num_distinct_values, static_cast<std::size_t>(1u));
-            } 
-            else {
-              // Instead of returning the naive number, use histogram to estimate range selectivity
-              // est_selectivity = 1/NumBuckets(Num of overlapped buckets) 
-              const ComparisonID comparison_type = comparison_expression->comparison().getComparisonID();
-              expressions::ScalarLiteralPtr scalarLiteral;
-            
-              if (E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->left(), &attr) &&
-                 E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->right(), &scalarLiteral)) {
-                E:: ExprId attr_id = attr->id();
-                TypedValue typed_value = scalarLiteral->value();
-                HypedValue* zero = NULL;
-                switch (typed_value.getTypeID()) {
-                  case kInt:
-                    zero = new HypedValue(TypedValue{static_cast<int>(0)});
-                    break;
-                  case kLong:
-                    zero = new HypedValue(TypedValue{static_cast<long>(0)});
-                    break;
-                  case kFloat:
-                    zero = new HypedValue(TypedValue{static_cast<float>(0)});
-                    break;
-                  case kDouble:
-                    zero = new HypedValue(TypedValue{static_cast<double>(0)});
-                    break;
-                  default:
-                    FATAL_ERROR("TypedValue does not appear to be numeric");
-                }
-                
-                switch (comparison_type) {
-                  case ComparisonID::kLess: {
-                    double selectivity = 0.0;
-                    if (typed_value.getTypeID() == kInt){
-                      int upper = typed_value.getLiteral<int>() - 1;
-                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(TypedValue{upper})}});
-                    }
-                    else {
-                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(typed_value)}});
-                    }
-                    return selectivity;
-                  }
-                  case ComparisonID::kLessOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(typed_value)}});
-                    return selectivity;
-                  }
-                  case ComparisonID::kGreater: {
-                    double selectivity = 0.0;
-                    if (typed_value.getTypeID() == kInt) {
-                      int lower = typed_value.getLiteral<int>() + 1;
-                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(TypedValue{lower}), false, *zero}});
-                    }
-                    else {
-                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(typed_value), false, *zero}});
-                    }
-                    return selectivity;
-                  }
-                  case ComparisonID::kGreaterOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(typed_value), false, *zero}});
-                    return selectivity;
-                  }
-                  default:
-                    return 1 - 1.0 / std::max(child_num_distinct_values, static_cast<std::size_t>(1u));                    
-                }
-                delete zero;
+            // Instead of returning the naive number, use histogram to estimate range selectivity
+            // est_selectivity = 1/NumBuckets(Num of overlapped buckets) 
+            const ComparisonID comparison_type = comparison_expression->comparison().getComparisonID();
+            expressions::ScalarLiteralPtr scalarLiteral;
+          
+            if (E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->left(), &attr) &&
+               E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->right(), &scalarLiteral)) {
+              E:: ExprId attr_id = attr->id();
+              TypedValue typed_value = scalarLiteral->value();
+              HypedValue* zero = NULL;
+              switch (typed_value.getTypeID()) {
+                case kInt:
+                  zero = new HypedValue(TypedValue{static_cast<int>(0)});
+                  break;
+                case kLong:
+                  zero = new HypedValue(TypedValue{static_cast<long>(0)});
+                  break;
+                case kFloat:
+                  zero = new HypedValue(TypedValue{static_cast<float>(0)});
+                  break;
+                case kDouble:
+                  zero = new HypedValue(TypedValue{static_cast<double>(0)});
+                  break;
+                default:
+                  FATAL_ERROR("TypedValue does not appear to be numeric");
               }
-
-              else {
-                E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->right(), &attr);
-                E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->left(), &scalarLiteral);
-                E:: ExprId attr_id = attr->id();
-                TypedValue typed_value = scalarLiteral->value();
-                HypedValue* zero = NULL;
-
-                switch (typed_value.getTypeID()) {
-                  case kInt:
-                    zero = new HypedValue(TypedValue{static_cast<int>(0)});
-                    break;
-                  case kLong:
-                    zero = new HypedValue(TypedValue{static_cast<long>(0)});
-                    break;
-                  case kFloat:
-                    zero = new HypedValue(TypedValue{static_cast<float>(0)});
-                    break;
-                  case kDouble:
-                    zero = new HypedValue(TypedValue{static_cast<double>(0)});
-                    break;
-                  default:
-                    FATAL_ERROR("TypedValue does not appear to be numeric");
+              
+              switch (comparison_type) {
+                case ComparisonID::kEqual: {
+                  double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{true, HypedValue(typed_value), true, HypedValue(typed_value)}});
+                  return selectivity;
                 }
-
-                switch (comparison_type) {
-                  case ComparisonID::kLess: {
-                    double selectivity = 0.0;
-                    if (typed_value.getTypeID() == kInt) {
-                      int lower = typed_value.getLiteral<int>() + 1;
-                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(TypedValue{lower}), false, *zero}});
-                    }
-                    else {
-                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(typed_value), false, *zero}});
-                    }
-                    return selectivity;
+                case ComparisonID::kLess: {
+                  double selectivity = 0.0;
+                  if (typed_value.getTypeID() == kInt){
+                    int upper = typed_value.getLiteral<int>() - 1;
+                    selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{false, *zero, true, HypedValue(TypedValue{upper})}});
                   }
-                  case ComparisonID::kLessOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
-                      {{true, HypedValue(typed_value), false, *zero}});
-                    return selectivity;
+                  else {
+                    selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{false, *zero, true, HypedValue(typed_value)}});
                   }
-                  case ComparisonID::kGreater: {
-                    double selectivity = 0.0;
-                    if (typed_value.getTypeID() == kInt){
-                      int upper = typed_value.getLiteral<int>() - 1;
-                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(TypedValue{upper})}});
-                    }
-                    else {
-                      selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(typed_value)}});
-                    }
-                    return selectivity;
-                  }
-                  case ComparisonID::kGreaterOrEqual: {
-                    double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
-                      {{false, *zero, true, HypedValue(typed_value)}});
-                    return selectivity;
-                  }
-                  default:
-                    return 1 - 1.0 / std::max(child_num_distinct_values, static_cast<std::size_t>(1u));                    
+                  return selectivity;
                 }
-                delete zero;
+                case ComparisonID::kLessOrEqual: {
+                  double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{false, *zero, true, HypedValue(typed_value)}});
+                  return selectivity;
+                }
+                case ComparisonID::kGreater: {
+                  double selectivity = 0.0;
+                  if (typed_value.getTypeID() == kInt) {
+                    int lower = typed_value.getLiteral<int>() + 1;
+                    selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                    {{true, HypedValue(TypedValue{lower}), false, *zero}});
+                  }
+                  else {
+                    selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                    {{true, HypedValue(typed_value), false, *zero}});
+                  }
+                  return selectivity;
+                }
+                case ComparisonID::kGreaterOrEqual: {
+                  double selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                    {{true, HypedValue(typed_value), false, *zero}});
+                  return selectivity;
+                }
+                default:
+                  return 1 - estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{true, HypedValue(typed_value), true, HypedValue(typed_value)}});
               }
-              // return 1.0 / std::max(std::min(child_num_distinct_values / 100.0, 10.0), 2.0);
+              delete zero;
             }
+
+            else {
+              E::SomeAttributeReference::MatchesWithConditionalCast(comparison_expression->right(), &attr);
+              E::SomeScalarLiteral::MatchesWithConditionalCast(comparison_expression->left(), &scalarLiteral);
+              E:: ExprId attr_id = attr->id();
+              TypedValue typed_value = scalarLiteral->value();
+              HypedValue* zero = NULL;
+
+              switch (typed_value.getTypeID()) {
+                case kInt:
+                  zero = new HypedValue(TypedValue{static_cast<int>(0)});
+                  break;
+                case kLong:
+                  zero = new HypedValue(TypedValue{static_cast<long>(0)});
+                  break;
+                case kFloat:
+                  zero = new HypedValue(TypedValue{static_cast<float>(0)});
+                  break;
+                case kDouble:
+                  zero = new HypedValue(TypedValue{static_cast<double>(0)});
+                  break;
+                default:
+                  FATAL_ERROR("TypedValue does not appear to be numeric");
+              }
+
+              switch (comparison_type) {
+                case ComparisonID::kEqual: {
+                  double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{true, HypedValue(typed_value), true, HypedValue(typed_value)}});
+                  return selectivity;
+                }
+                case ComparisonID::kLess: {
+                  double selectivity = 0.0;
+                  if (typed_value.getTypeID() == kInt) {
+                    int lower = typed_value.getLiteral<int>() + 1;
+                    selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                    {{true, HypedValue(TypedValue{lower}), false, *zero}});
+                  }
+                  else {
+                    selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                    {{true, HypedValue(typed_value), false, *zero}});
+                  }
+                  return selectivity;
+                }
+                case ComparisonID::kLessOrEqual: {
+                  double selectivity = estimateSelectivityUsingHistogram({attr_id}, child, 
+                    {{true, HypedValue(typed_value), false, *zero}});
+                  return selectivity;
+                }
+                case ComparisonID::kGreater: {
+                  double selectivity = 0.0;
+                  if (typed_value.getTypeID() == kInt){
+                    int upper = typed_value.getLiteral<int>() - 1;
+                    selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{false, *zero, true, HypedValue(TypedValue{upper})}});
+                  }
+                  else {
+                    selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{false, *zero, true, HypedValue(typed_value)}});
+                  }
+                  return selectivity;
+                }
+                case ComparisonID::kGreaterOrEqual: {
+                  double selectivity = estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{false, *zero, true, HypedValue(typed_value)}});
+                  return selectivity;
+                }
+                default:
+                  return 1 - estimateSelectivityUsingHistogram({attr_id}, child,
+                    {{true, HypedValue(typed_value), true, HypedValue(typed_value)}});      
+              }
+              delete zero;
+            }
+            // return 1.0 / std::max(std::min(child_num_distinct_values / 100.0, 10.0), 2.0);
           }
         }
         return 0.1;
