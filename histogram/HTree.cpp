@@ -21,7 +21,7 @@
 #include "types/TypedValue.hpp"
 
 #include "histogram/HTree.pb.h"
-
+#include <algorithm>
 namespace quickstep {
 
 using std::vector;
@@ -204,6 +204,37 @@ serialization::HTree HTree::getProto() const {
   std::cout << "bytes used: " << proto_length << "\n"; 
   return proto;
 
+}
+
+/* helper function for histogram construction */
+void HTree::sortTuplesHelper(
+    vector< vector<HypedValue> >::iterator begin,
+    vector< vector<HypedValue> >::iterator end,
+    vector<int> &num_buckets, int attr_index)
+{
+    if (attr_index == num_buckets.size()) return;
+
+    std::sort(begin, end, 
+        [&attr_index] (const vector<HypedValue> u, const vector<HypedValue> v)
+        { return u[attr_index] < v[attr_index]; }
+    );
+
+    unsigned int bucket_size =
+        std::ceil((float) (end - begin) / num_buckets[attr_index]);
+    typename vector< vector<HypedValue> >::iterator range_begin = begin;
+    while (range_begin < end) {
+        typename vector< vector<HypedValue> >::iterator range_end =
+            range_begin + bucket_size;
+        if (range_end > end) {
+            range_end = end;
+        }
+        sortTuplesHelper(range_begin, range_end, num_buckets, attr_index + 1);
+        range_begin = range_end;
+    }
+}
+
+void HTree::sortTuples(vector< vector<HypedValue> > &tuples, vector<int> &num_buckets) {
+    sortTuplesHelper(tuples.begin(), tuples.end(), num_buckets, 0);
 }
 
 }  // namespace quickstep

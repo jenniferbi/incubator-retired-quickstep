@@ -619,6 +619,14 @@ template <typename T>
     total_buckets_ = getTotalBuckets(num_buckets);
   }
 
+  static void sortTuplesHelper( 
+    vector< vector<HypedValue> >::iterator begin,
+    vector< vector<HypedValue> >::iterator end,
+    vector<int> &num_buckets, int attr_index);
+
+  static void sortTuples(
+    vector< vector<HypedValue> > &tuples, vector<int> &num_buckets);
+
 private:
   // root node of histogram
   shared_ptr<htree_node<HypedValue> > root_;
