@@ -26,6 +26,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "histogram/HTree.hpp"
 #include "histogram/HypedValue.hpp"
@@ -448,40 +449,42 @@ class CatalogRelation : public CatalogRelationSchema {
    * @return The selectivity of a range predicate on the attribute specified
    */
   double getSelectivityForPredicate(const int num_attr,
-        const attribute_id attr_id, 
-        const interval<HypedValue> &query_interval,
-        const TypeID type_id) const{
+        const std::vector<attribute_id> attr_ids, 
+        const std::vector<interval<HypedValue>> &query_intervals,
+        const std::vector<TypeID> type_ids) const{
     DCHECK(hasHistogram());
     
     vector< interval<HypedValue> > dimensions;
-    HypedValue* zero = NULL;
-    switch (type_id) {
-      case kInt:
-        zero = new HypedValue(TypedValue{static_cast<int>(0)});
-        break;
-      case kLong:
-        zero = new HypedValue(TypedValue{static_cast<long>(0)});
-        break;
-      case kFloat:
-        zero = new HypedValue(TypedValue{static_cast<float>(0)});
-        break;
-      case kDouble:
-        zero = new HypedValue(TypedValue{static_cast<double>(0)});
-        break;
-      default:
-        FATAL_ERROR("TypedValue does not appear to be numeric");
-    }
-
 
     for (int i = 0; i < num_attr; ++i) {
-      if (i != attr_id) {
-        dimensions.emplace_back(false, *zero, false, *zero);
+      auto it = std::find(attr_ids.begin(), attr_ids.end(), i);
+      if (it != attr_ids.end()) {
+        int index = std::distance(attr_ids.begin(), it);
+        dimensions.emplace_back(query_intervals[index]);
       }
       else {
-        dimensions.emplace_back(query_interval);
+        HypedValue* zero = NULL;
+        switch (type_ids[i]) {
+          case kInt:
+            zero = new HypedValue(TypedValue{static_cast<int>(0)});
+            break;
+          case kLong:
+            zero = new HypedValue(TypedValue{static_cast<long>(0)});
+            break;
+          case kFloat:
+            zero = new HypedValue(TypedValue{static_cast<float>(0)});
+            break;
+          case kDouble:
+            zero = new HypedValue(TypedValue{static_cast<double>(0)});
+            break;
+          default:
+            FATAL_ERROR("TypedValue does not appear to be numeric");
+        }
+        dimensions.emplace_back(false, *zero, false, *zero);
+        delete zero;
+
       }
     }
-    delete zero;
 
     const bucket<HypedValue> query(dimensions);
     double num_buckets = histogram_->getRoot()->estimateSelectivity(query);
