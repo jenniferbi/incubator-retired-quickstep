@@ -198,10 +198,12 @@ serialization::HTree HTree::getProto() const {
   if (root_ != nullptr) {
       serialization::HTree_HTreeNode* node_proto = proto.mutable_root();
       htree_node<HypedValue>::getProtoHelper(*node_proto, *root_);
+
+	  // logging
+	  const int proto_length = proto.ByteSize();  
+	  std::cout << "bytes used: " << proto_length << "\n"; 
   }
 
-  const int proto_length = proto.ByteSize();  
-  std::cout << "bytes used: " << proto_length << "\n"; 
   return proto;
 
 }
